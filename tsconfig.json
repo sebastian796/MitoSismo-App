@@ -17,9 +17,5 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
   ],
-  "exclude": [
-    "node_modules",
-    "material_por_revisar",
-    "material_de_migracion"
-  ]
+  "exclude": ["node_modules"]
 }

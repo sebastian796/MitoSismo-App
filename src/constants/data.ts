@@ -1,9 +1,17 @@
-import { Quake, Mission, Creature, EmergencyContact } from '../types';
+import type {
+  Mission,
+  Creature,
+  EmergencyContact,
+} from '../types';
+
+import type { Quake } from '../types/earthquake';
 
 export const quakes: Quake[] = [
+
   {
-    id: 1,
+    id: '1',
     mag: 5.2,
+    magType: 'ML',
     place: '120 km al oeste de Lima, Perú',
     depth: 38,
     time: 'Hoy, 03:42 a.m.',
@@ -14,8 +22,9 @@ export const quakes: Quake[] = [
     fullDate: '7 sep 2026, 03:42:17 a.m. (UTC-5)',
   },
   {
-    id: 2,
+    id: '2',
     mag: 4.1,
+    magType: 'ML',
     place: '45 km al norte de Santiago, Chile',
     depth: 12,
     time: 'Hoy, 01:15 a.m.',
@@ -26,8 +35,9 @@ export const quakes: Quake[] = [
     fullDate: '7 sep 2026, 01:15:44 a.m. (UTC-4)',
   },
   {
-    id: 3,
+    id: '3',
     mag: 3.7,
+    magType: 'ML',
     place: '80 km al este de Quito, Ecuador',
     depth: 55,
     time: 'Ayer, 22:30',
@@ -38,8 +48,9 @@ export const quakes: Quake[] = [
     fullDate: '6 sep 2026, 22:30:09 p.m. (UTC-5)',
   },
   {
-    id: 4,
+    id: '4',
     mag: 6.1,
+    magType: 'ML',
     place: '200 km al sur de Valparaíso, Chile',
     depth: 22,
     time: 'Ayer, 18:05',
@@ -50,8 +61,9 @@ export const quakes: Quake[] = [
     fullDate: '6 sep 2026, 18:05:32 p.m. (UTC-4)',
   },
   {
-    id: 5,
+    id: '5',
     mag: 2.8,
+    magType: 'ML',
     place: '30 km al noroeste de Bogotá, Colombia',
     depth: 8,
     time: 'Ayer, 14:20',
@@ -62,8 +74,9 @@ export const quakes: Quake[] = [
     fullDate: '6 sep 2026, 14:20:05 p.m. (UTC-5)',
   },
   {
-    id: 6,
+    id: '6',
     mag: 4.8,
+    magType: 'ML',
     place: '15 km al norte de Ciudad de México',
     depth: 18,
     time: 'Hace 2 días',

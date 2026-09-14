@@ -14,7 +14,7 @@ Actualmente existen dos bases de código dentro del repositorio:
 2. **`src/` (React Native / Expo SDK 57)**:
    - Proyecto base móvil configurado con Expo 57, TypeScript y `expo-router`.
    - Ya cuenta con dependencias clave instaladas (`react-native-svg`, `react-native-screens`, `react-native-safe-area-context`, `@expo/vector-icons`, `react-native-reanimated`).
-   - Sistema de diseño listo en `src/constants/theme.ts` y componentes base en `src/components/core/` (`Button`, `Card`, `Input`, `MagBadge`, `TopBar`) y `src/components/icons/` (`Logo`, `Ignis`).
+   - Sistema de diseño listo en `src/constants/theme.ts`, componentes genéricos en `src/components/ui/` (`Button`, `Card`, `Input`, `TopBar`), componentes sísmicos en `src/components/quake/` (`MagBadge`) e iconos en `src/components/icons/` (`Logo`, `Ignis`).
 
 **Objetivo General:** Migrar progresivamente todas las pantallas del diseño Web a componentes nativos de React Native en Expo SDK 57, conectándolas con una arquitectura Back-end robusta y dividiendo el trabajo entre 5 integrantes (1 Team Lead/Arquitecto, 3 Desarrolladores Front-end y 1 Desarrollador Back-end).
 
@@ -41,7 +41,7 @@ Actualmente existen dos bases de código dentro del repositorio:
   - Acento: `#E8521A` (Fuego / Mascota Ignis)
   - Fondo: `#F8F4EE` (Arena suave)
   - Alertas de Magnitud: `#4CAF50` (Leve < 4.0), `#FF9800` (Moderado 4.0–4.9), `#E8521A` (Fuerte 5.0–6.9), `#B71C1C` (Mayor ≥ 7.0).
-- **Componentes Base Reutilizables (`src/components/core/`):**
+- **Componentes reutilizables:** `src/components/ui/` para UI genérica y `src/components/quake/` para el dominio sísmico.
   - `Button`: Variantes primario, secundario, outline, con soporte de carga y deshabilitado.
   - `Card`: Contenedor con borde `#DDD5C5` y sombra sutil nativa.
   - `Input`: Campo con etiqueta, placeholder estilizado y manejo de errores.
@@ -65,8 +65,8 @@ Actualmente existen dos bases de código dentro del repositorio:
   - `src/app/(auth)/_layout.tsx` (Stack para autenticación)
 - **Instrucciones Clave para Dev Front A:**
   1. Reemplazar `<div>` y `<form>` por `<KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>` y `<ScrollView>`.
-  2. Sustituir `<input>` por `<TextInput>` usando `src/components/core/Input.tsx`.
-  3. Utilizar `<Button>` de `src/components/core/Button.tsx` para las acciones principales.
+  2. Sustituir `<input>` por `<TextInput>` usando `src/components/ui/Input.tsx`.
+  3. Utilizar `<Button>` de `src/components/ui/Button.tsx` para las acciones principales.
   4. Animación suave del logo en Splash mediante `react-native-reanimated` o `Animated.timing`.
   5. Navegación:
      - De Login a Tabs: `router.replace('/(tabs)')`
@@ -194,7 +194,7 @@ MitoSismo/
 | :--- | :--- | :--- |
 | `<div>`, `<section>`, `<main>` | `<View>` | En React Native el Flexbox tiene `flexDirection: 'column'` por defecto. |
 | `<p>`, `<span>`, `<h1>`, `<h2>` | `<Text>` | **Regla de oro:** Todo texto DEBE estar envuelto en `<Text>`. Los strings sueltos causan error de render. |
-| `<button onClick={...}>` | `<Pressable onPress={...}>` o `<TouchableOpacity>` | Usa `<Button>` de `src/components/core/Button.tsx`. |
+| `<button onClick={...}>` | `<Pressable onPress={...}>` o `<TouchableOpacity>` | Usa `<Button>` de `src/components/ui/Button.tsx`. |
 | `<input type="text">` | `<TextInput>` | Usa `onChangeText={(text) => ...}` en lugar de `e.target.value`. |
 | `style={{ overflow: 'scroll' }}` | `<ScrollView>` o `<FlatList>` | Usa siempre `<FlatList>` para listas largas o dinámicas de sismos. |
 | `<svg>`, `<circle>`, `<path>` | `react-native-svg` (`<Svg>`, `<Circle>`, `<Path>`) | Respeta las coordenadas SVG existentes. |

@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TopBar, Card, MagBadge } from '../../components';
 import { quakes } from '../../constants/data';
-import { Quake } from '../../types';
+import type { Quake } from '../../types/earthquake';
 import { Colors, Spacing, Typography, Radii, Shadows, magInfo } from '../../constants/theme';
 
 export default function MapScreen() {
