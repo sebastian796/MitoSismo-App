@@ -1,28 +1,122 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TopBar, Card, MagBadge, Button } from '../../components';
-import { quakes } from '../../constants/data';
-import { Colors, Spacing, Typography, Radii, magInfo } from '../../constants/theme';
+import { fetchEarthquakeById } from '../../services/earthquakeService';
+import type { Quake } from '../../types/earthquake';
+import {
+  Colors,
+  Spacing,
+  Typography,
+  Radii,
+  magInfo,
+} from '../../constants/theme';
 
 export default function QuakeDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [reported, setReported] = useState(false);
 
-  const quake = quakes.find((q) => q.id.toString() === id) || quakes[0];
-  const info = magInfo(quake.mag);
+  const [reported, setReported] = useState(false);
+  const [quake, setQuake] = useState<Quake | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadQuake() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const data = await fetchEarthquakeById(id);
+
+        if (!data) {
+          setError('No se encontró información de este sismo.');
+          return;
+        }
+
+        setQuake(data);
+      } catch (err) {
+        console.error('Error al cargar detalle del sismo:', err);
+        setError('No se pudo cargar el detalle del sismo.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (id) {
+      loadQuake();
+    }
+  }, [id]);
+
+  const info = quake ? magInfo(quake.mag) : null;
 
   const handleReportSafe = () => {
     setReported(true);
-    Alert.alert('Reporte Enviado', 'Tu estado "Estoy a salvo" ha sido registrado y compartido con tus contactos.');
+
+    Alert.alert(
+      'Reporte Enviado',
+      'Tu estado "Estoy a salvo" ha sido registrado y compartido con tus contactos.',
+    );
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <TopBar
+          title="Detalle del Sismo"
+          showBack
+          onBack={() => router.back()}
+        />
+
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyTitle}>
+            Cargando información del sismo...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !quake || !info) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <TopBar
+          title="Detalle del Sismo"
+          showBack
+          onBack={() => router.back()}
+        />
+
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyTitle}>
+            {error ?? 'No se encontró el sismo.'}
+          </Text>
+
+          <Button
+            title="Regresar"
+            variant="outline"
+            onPress={() => router.back()}
+            style={styles.backAction}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <TopBar title="Detalle del Sismo" showBack onBack={() => router.back()} />
+      <TopBar
+        title="Detalle del Sismo"
+        showBack
+        onBack={() => router.back()}
+      />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -32,33 +126,61 @@ export default function QuakeDetailScreen() {
         <Card style={styles.mainCard}>
           <View style={styles.badgeRow}>
             <MagBadge mag={quake.mag} showDot />
-            <Text style={styles.countryLabel}>{quake.country}</Text>
+
+            <Text style={styles.countryLabel}>
+              {quake.country}
+            </Text>
           </View>
 
           <View style={styles.magDisplayRow}>
-            <Text style={styles.magLargeNumber}>{quake.mag.toFixed(1)}</Text>
+            <Text style={styles.magLargeNumber}>
+              {quake.mag.toFixed(1)}
+            </Text>
+
             <View style={styles.magTextGroup}>
-              <Text style={styles.magScaleLabel}>Magnitud Local (ML)</Text>
-              <Text style={styles.magSubText}>Intensidad: {info.label}</Text>
+              <Text style={styles.magScaleLabel}>
+                Magnitud {quake.magType}
+              </Text>
+
+              <Text style={styles.magSubText}>
+                Intensidad: {info.label}
+              </Text>
             </View>
           </View>
 
-          <Text style={styles.placeText}>{quake.place}</Text>
+          <Text style={styles.placeText}>
+            {quake.place}
+          </Text>
         </Card>
 
         {/* Technical Details Grid */}
-        <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { marginTop: Spacing.xl },
+          ]}
+        >
           Parámetros Sísmicos
         </Text>
 
         <Card style={styles.detailsCard}>
           <View style={styles.detailRow}>
             <View style={styles.detailIconBox}>
-              <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
+              <Ionicons
+                name="calendar-outline"
+                size={20}
+                color={Colors.primary}
+              />
             </View>
+
             <View style={styles.detailTextCol}>
-              <Text style={styles.detailLabel}>Fecha y Hora Exacta</Text>
-              <Text style={styles.detailValue}>{quake.fullDate}</Text>
+              <Text style={styles.detailLabel}>
+                Fecha y Hora Exacta
+              </Text>
+
+              <Text style={styles.detailValue}>
+                {quake.fullDate}
+              </Text>
             </View>
           </View>
 
@@ -66,11 +188,21 @@ export default function QuakeDetailScreen() {
 
           <View style={styles.detailRow}>
             <View style={styles.detailIconBox}>
-              <Ionicons name="arrow-down-circle-outline" size={20} color={Colors.primary} />
+              <Ionicons
+                name="arrow-down-circle-outline"
+                size={20}
+                color={Colors.primary}
+              />
             </View>
+
             <View style={styles.detailTextCol}>
-              <Text style={styles.detailLabel}>Profundidad Hipocentral</Text>
-              <Text style={styles.detailValue}>{quake.depth} km (Superficial)</Text>
+              <Text style={styles.detailLabel}>
+                Profundidad Hipocentral
+              </Text>
+
+              <Text style={styles.detailValue}>
+                {quake.depth} km
+              </Text>
             </View>
           </View>
 
@@ -78,28 +210,50 @@ export default function QuakeDetailScreen() {
 
           <View style={styles.detailRow}>
             <View style={styles.detailIconBox}>
-              <Ionicons name="navigate-outline" size={20} color={Colors.primary} />
+              <Ionicons
+                name="navigate-outline"
+                size={20}
+                color={Colors.primary}
+              />
             </View>
+
             <View style={styles.detailTextCol}>
-              <Text style={styles.detailLabel}>Coordenadas del Epicentro</Text>
-              <Text style={styles.detailValue}>{quake.coords}</Text>
+              <Text style={styles.detailLabel}>
+                Coordenadas del Epicentro
+              </Text>
+
+              <Text style={styles.detailValue}>
+                {quake.coords}
+              </Text>
             </View>
           </View>
         </Card>
 
         {/* Safety Report Action */}
-        <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { marginTop: Spacing.xl },
+          ]}
+        >
           Tu Estado de Seguridad
         </Text>
 
         <Card style={styles.reportCard}>
-          <Text style={styles.reportTitle}>¿Sentiste este sismo?</Text>
+          <Text style={styles.reportTitle}>
+            ¿Sentiste este sismo?
+          </Text>
+
           <Text style={styles.reportSub}>
             Informa a tu familia y comunidad que te encuentras a salvo.
           </Text>
 
           <Button
-            title={reported ? '✓ Estado Reportado: A Salvo' : 'Reportar: Estoy a Salvo'}
+            title={
+              reported
+                ? '✓ Estado Reportado: A Salvo'
+                : 'Reportar: Estoy a Salvo'
+            }
             onPress={handleReportSafe}
             variant={reported ? 'secondary' : 'accent'}
             disabled={reported}
@@ -227,5 +381,16 @@ const styles = StyleSheet.create({
   },
   backAction: {
     marginTop: Spacing.xl,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
+  },
+  emptyTitle: {
+    ...Typography.titleSmall,
+    color: Colors.textSecondary,
+    textAlign: 'center',
   },
 });

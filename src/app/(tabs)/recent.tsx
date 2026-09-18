@@ -31,6 +31,7 @@ export default function RecentScreen() {
     'Ecuador',
     'Colombia',
     'México',
+    'Internacional',
   ];
 
   useEffect(() => {

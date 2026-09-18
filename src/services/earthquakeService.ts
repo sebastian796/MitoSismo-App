@@ -75,12 +75,35 @@ function formatCoordinates(lat: number, lng: number): string {
 
 function extractCountry(place: string): string {
   if (!place) {
-    return 'Desconocido';
+    return 'Internacional';
   }
 
-  const parts = place.split(',').map((part) => part.trim());
+  const normalizedPlace = place.toLowerCase();
 
-  return parts.length > 1 ? parts[parts.length - 1] : 'Desconocido';
+  if (normalizedPlace.includes('peru')) {
+    return 'Perú';
+  }
+
+  if (normalizedPlace.includes('chile')) {
+    return 'Chile';
+  }
+
+  if (normalizedPlace.includes('ecuador')) {
+    return 'Ecuador';
+  }
+
+  if (normalizedPlace.includes('colombia')) {
+    return 'Colombia';
+  }
+
+  if (
+    normalizedPlace.includes('mexico') ||
+    normalizedPlace.includes('méxico')
+  ) {
+    return 'México';
+  }
+
+  return 'Internacional';
 }
 
 function mapFeatureToQuake(feature: USGSFeature): Quake | null {
@@ -103,7 +126,7 @@ function mapFeatureToQuake(feature: USGSFeature): Quake | null {
     place: properties.place,
     depth: Number(depth.toFixed(1)),
     time: formatRelativeTime(properties.time),
-    country: 'Internacional',
+    country: extractCountry(properties.place),
     lat,
     lng,
     coords: formatCoordinates(lat, lng),
@@ -133,4 +156,31 @@ export async function fetchRecentEarthquakes(
   return data.features
     .map(mapFeatureToQuake)
     .filter((quake): quake is Quake => quake !== null);
+}
+
+export async function fetchEarthquakeById(
+  id: string,
+): Promise<Quake | null> {
+  const params = new URLSearchParams({
+    format: 'geojson',
+    eventid: id,
+  });
+
+  const response = await fetch(`${USGS_API_URL}?${params.toString()}`);
+
+  if (!response.ok) {
+    throw new Error(
+      `Error al consultar el sismo: ${response.status}`,
+    );
+  }
+
+  const data: USGSResponse = await response.json();
+
+  const feature = data.features[0];
+
+  if (!feature) {
+    return null;
+  }
+
+  return mapFeatureToQuake(feature);
 }
