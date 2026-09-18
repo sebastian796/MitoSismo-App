@@ -112,7 +112,8 @@ export default function RecentScreen() {
       {/* Quakes List */}
       <FlatList
         data={filteredQuakes}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => String(item.id)}
+        initialNumToRender={10}
         renderItem={renderQuakeItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}

@@ -95,6 +95,11 @@ export default function MissionsScreen() {
                   </View>
                   <Text style={styles.missionDesc}>{m.description}</Text>
 
+                  {/* Individual Mission Progress */}
+                  <View style={styles.itemProgressBg}>
+                    <View style={[styles.itemProgressFill, { width: `${m.progress}%` }]} />
+                  </View>
+
                   {/* XP Reward */}
                   <View style={styles.rewardRow}>
                     <View style={styles.rewardPill}>
@@ -251,6 +256,18 @@ const styles = StyleSheet.create({
     ...Typography.bodySmall,
     marginTop: 2,
     lineHeight: 16,
+  },
+  itemProgressBg: {
+    height: 4,
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: Radii.full,
+    overflow: 'hidden',
+    marginTop: Spacing.sm,
+  },
+  itemProgressFill: {
+    height: '100%',
+    backgroundColor: Colors.accent,
+    borderRadius: Radii.full,
   },
   rewardRow: {
     flexDirection: 'row',

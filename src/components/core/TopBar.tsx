@@ -82,6 +82,7 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     ...Typography.titleSmall,
+    textAlign: 'center',
   },
   right: {
     marginLeft: Spacing.sm,
