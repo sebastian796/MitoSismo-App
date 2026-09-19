@@ -1,5 +1,6 @@
 package com.mito.sismo.entity;
 
+import com.mito.sismo.entity.enums.Role;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -7,6 +8,8 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -30,9 +33,9 @@ public class Usuario {
     @Column(unique = true,nullable = false,length = 150)
     private String passwordHash;
 
-    @NotBlank(message = "El rol es obligatorio")
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private String rol; // USUARIO o ADMIN
+    private Role rol = Role.USUARIO; // USUARIO o ADMIN
 
     @Size(max = 100)
     private String ciudad;
@@ -50,5 +53,23 @@ public class Usuario {
     public void preUpdate() {
         this.updatedAt = Instant.now();
     }
+
+    @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    private ConfiguracionUsuario configuracion;
+
+    @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+    private UsuarioCriatura criatura;
+
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<UsuarioMision> misiones = new HashSet<>();
+
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<UsuarioInsignia> insignias = new HashSet<>();
+
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<ReporteSeguridad> reportes = new HashSet<>();
+
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<UsuarioMochilaItem> mochilaItems = new HashSet<>();
 
 }
