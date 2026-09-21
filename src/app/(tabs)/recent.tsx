@@ -40,7 +40,11 @@ export default function RecentScreen() {
         setLoading(true);
         setError(null);
 
-        const data = await fetchRecentEarthquakes(20);
+        const data =
+          countryFilter === 'Todos'
+            ? await fetchRecentEarthquakes(20)
+            : await fetchRecentEarthquakes(20, countryFilter);
+
         setQuakes(data);
       } catch (err) {
         console.error('Error al cargar sismos:', err);
@@ -51,17 +55,14 @@ export default function RecentScreen() {
     }
 
     loadEarthquakes();
-  }, []);
+  }, [countryFilter]);
 
   const filteredQuakes = quakes.filter((q) => {
     const matchesSearch =
       q.place.toLowerCase().includes(search.toLowerCase()) ||
       q.country.toLowerCase().includes(search.toLowerCase());
 
-    const matchesCountry =
-      countryFilter === 'Todos' || q.country === countryFilter;
-
-    return matchesSearch && matchesCountry;
+    return matchesSearch;
   });
 
   const renderQuakeItem = ({ item }: { item: Quake }) => (

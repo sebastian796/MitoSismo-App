@@ -3,6 +3,43 @@ import type { Quake } from '../types/earthquake';
 const USGS_API_URL =
   'https://earthquake.usgs.gov/fdsnws/event/1/query';
 
+const COUNTRY_BOUNDS = {
+  Perú: {
+    minlatitude: -18.5,
+    maxlatitude: 0,
+    minlongitude: -81.5,
+    maxlongitude: -68.5,
+  },
+
+  Chile: {
+    minlatitude: -56,
+    maxlatitude: -17,
+    minlongitude: -76,
+    maxlongitude: -66,
+  },
+
+  Ecuador: {
+    minlatitude: -5,
+    maxlatitude: 2,
+    minlongitude: -82,
+    maxlongitude: -75,
+  },
+
+  Colombia: {
+    minlatitude: -5,
+    maxlatitude: 13,
+    minlongitude: -80,
+    maxlongitude: -66,
+  },
+
+  México: {
+    minlatitude: 14,
+    maxlatitude: 33,
+    minlongitude: -118,
+    maxlongitude: -86,
+  },
+};
+
 type USGSFeature = {
   id: string;
   properties: {
@@ -78,7 +115,10 @@ function extractCountry(place: string): string {
     return 'Internacional';
   }
 
-  const normalizedPlace = place.toLowerCase();
+  const normalizedPlace = place
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 
   if (normalizedPlace.includes('peru')) {
     return 'Perú';
@@ -96,17 +136,17 @@ function extractCountry(place: string): string {
     return 'Colombia';
   }
 
-  if (
-    normalizedPlace.includes('mexico') ||
-    normalizedPlace.includes('méxico')
-  ) {
+  if (normalizedPlace.includes('mexico')) {
     return 'México';
   }
 
   return 'Internacional';
 }
 
-function mapFeatureToQuake(feature: USGSFeature): Quake | null {
+function mapFeatureToQuake(
+  feature: USGSFeature,
+  country?: keyof typeof COUNTRY_BOUNDS,
+): Quake | null {
   const { properties, geometry } = feature;
 
   if (
@@ -126,7 +166,9 @@ function mapFeatureToQuake(feature: USGSFeature): Quake | null {
     place: properties.place,
     depth: Number(depth.toFixed(1)),
     time: formatRelativeTime(properties.time),
-    country: extractCountry(properties.place),
+
+    country: country ?? extractCountry(properties.place),
+
     lat,
     lng,
     coords: formatCoordinates(lat, lng),
@@ -136,6 +178,7 @@ function mapFeatureToQuake(feature: USGSFeature): Quake | null {
 
 export async function fetchRecentEarthquakes(
   limit = 20,
+  country?: keyof typeof COUNTRY_BOUNDS | 'Internacional',
 ): Promise<Quake[]> {
   const params = new URLSearchParams({
     format: 'geojson',
@@ -143,7 +186,18 @@ export async function fetchRecentEarthquakes(
     limit: String(limit),
   });
 
-  const response = await fetch(`${USGS_API_URL}?${params.toString()}`);
+  if (country && country !== 'Internacional') {
+    const bounds = COUNTRY_BOUNDS[country];
+
+    params.set('minlatitude', String(bounds.minlatitude));
+    params.set('maxlatitude', String(bounds.maxlatitude));
+    params.set('minlongitude', String(bounds.minlongitude));
+    params.set('maxlongitude', String(bounds.maxlongitude));
+  }
+
+  const response = await fetch(
+    `${USGS_API_URL}?${params.toString()}`,
+  );
 
   if (!response.ok) {
     throw new Error(
@@ -153,9 +207,25 @@ export async function fetchRecentEarthquakes(
 
   const data: USGSResponse = await response.json();
 
-  return data.features
-    .map(mapFeatureToQuake)
+  const quakes = data.features
+    .map((feature) => mapFeatureToQuake(feature, country))
     .filter((quake): quake is Quake => quake !== null);
+
+  if (country === 'Internacional') {
+    const excludedCountries = [
+      'Perú',
+      'Chile',
+      'Ecuador',
+      'Colombia',
+      'México',
+    ];
+
+    return quakes
+      .filter((quake) => !excludedCountries.includes(quake.country))
+      .slice(0, limit);
+  }
+
+  return quakes;
 }
 
 export async function fetchEarthquakeById(
@@ -166,7 +236,9 @@ export async function fetchEarthquakeById(
     eventid: id,
   });
 
-  const response = await fetch(`${USGS_API_URL}?${params.toString()}`);
+  const response = await fetch(
+    `${USGS_API_URL}?${params.toString()}`,
+  );
 
   if (!response.ok) {
     throw new Error(
