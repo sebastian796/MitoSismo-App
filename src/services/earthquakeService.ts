@@ -1,8 +1,10 @@
 import type { Quake } from '../types/earthquake';
 
+// URL de consulta de la API de USGS.
 const USGS_API_URL =
   'https://earthquake.usgs.gov/fdsnws/event/1/query';
 
+// Límites geográficos utilizados para los filtros por país.
 const COUNTRY_BOUNDS = {
   Perú: {
     minlatitude: -18.5,
@@ -40,6 +42,7 @@ const COUNTRY_BOUNDS = {
   },
 };
 
+// Estructura de un evento recibido desde USGS.
 type USGSFeature = {
   id: string;
   properties: {
@@ -54,10 +57,12 @@ type USGSFeature = {
   };
 };
 
+// Estructura de la respuesta de USGS.
 type USGSResponse = {
   features: USGSFeature[];
 };
 
+// Convierte el timestamp a un tiempo relativo.
 function formatRelativeTime(timestamp: number | null): string {
   if (!timestamp) {
     return 'Fecha desconocida';
@@ -90,6 +95,7 @@ function formatRelativeTime(timestamp: number | null): string {
   return `Hace ${diffDays} días`;
 }
 
+// Formatea la fecha completa del sismo.
 function formatFullDate(timestamp: number | null): string {
   if (!timestamp) {
     return 'Fecha desconocida';
@@ -101,6 +107,7 @@ function formatFullDate(timestamp: number | null): string {
   });
 }
 
+// Formatea las coordenadas para mostrarlas en pantalla.
 function formatCoordinates(lat: number, lng: number): string {
   const latitudeDirection = lat >= 0 ? 'N' : 'S';
   const longitudeDirection = lng >= 0 ? 'E' : 'O';
@@ -110,11 +117,13 @@ function formatCoordinates(lat: number, lng: number): string {
   ).toFixed(3)}°${longitudeDirection}`;
 }
 
+// Determina el país a partir de la ubicación proporcionada por USGS.
 function extractCountry(place: string): string {
   if (!place) {
     return 'Internacional';
   }
 
+  // Normaliza el texto para evitar problemas con tildes.
   const normalizedPlace = place
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -143,12 +152,14 @@ function extractCountry(place: string): string {
   return 'Internacional';
 }
 
+// Convierte los datos de USGS al modelo Quake de la aplicación.
 function mapFeatureToQuake(
   feature: USGSFeature,
   country?: keyof typeof COUNTRY_BOUNDS,
 ): Quake | null {
   const { properties, geometry } = feature;
 
+  // Descarta eventos sin información necesaria.
   if (
     properties.mag === null ||
     properties.place === null ||
@@ -167,6 +178,7 @@ function mapFeatureToQuake(
     depth: Number(depth.toFixed(1)),
     time: formatRelativeTime(properties.time),
 
+    // Usa el país del filtro o lo obtiene desde el lugar.
     country: country ?? extractCountry(properties.place),
 
     lat,
@@ -176,6 +188,7 @@ function mapFeatureToQuake(
   };
 }
 
+// Obtiene los sismos recientes y aplica filtros geográficos.
 export async function fetchRecentEarthquakes(
   limit = 20,
   country?: keyof typeof COUNTRY_BOUNDS | 'Internacional',
@@ -186,6 +199,7 @@ export async function fetchRecentEarthquakes(
     limit: String(limit),
   });
 
+  // Agrega los límites del país seleccionado a la consulta.
   if (country && country !== 'Internacional') {
     const bounds = COUNTRY_BOUNDS[country];
 
@@ -195,6 +209,7 @@ export async function fetchRecentEarthquakes(
     params.set('maxlongitude', String(bounds.maxlongitude));
   }
 
+  // Consulta la API de USGS.
   const response = await fetch(
     `${USGS_API_URL}?${params.toString()}`,
   );
@@ -207,10 +222,12 @@ export async function fetchRecentEarthquakes(
 
   const data: USGSResponse = await response.json();
 
+  // Convierte los eventos al formato de la aplicación.
   const quakes = data.features
     .map((feature) => mapFeatureToQuake(feature, country))
     .filter((quake): quake is Quake => quake !== null);
 
+  // Internacional excluye los países que tienen filtros propios.
   if (country === 'Internacional') {
     const excludedCountries = [
       'Perú',
@@ -228,6 +245,7 @@ export async function fetchRecentEarthquakes(
   return quakes;
 }
 
+// Obtiene un sismo específico mediante su ID de USGS.
 export async function fetchEarthquakeById(
   id: string,
 ): Promise<Quake | null> {
@@ -236,6 +254,7 @@ export async function fetchEarthquakeById(
     eventid: id,
   });
 
+  // Consulta el evento específico.
   const response = await fetch(
     `${USGS_API_URL}?${params.toString()}`,
   );
@@ -254,5 +273,6 @@ export async function fetchEarthquakeById(
     return null;
   }
 
+  // Convierte el resultado al modelo de la aplicación.
   return mapFeatureToQuake(feature);
 }
