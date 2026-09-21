@@ -31,6 +31,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedAccessException ex) {
         return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());
     }
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidToken(InvalidTokenException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Token inválido", "message", ex.getMessage()));
+    }
+
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {
         Map<String, Object> body = new HashMap<>();

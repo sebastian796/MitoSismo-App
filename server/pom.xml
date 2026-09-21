@@ -97,6 +97,14 @@
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.nimbusds</groupId>
+			<artifactId>nimbus-jose-jwt</artifactId>
+			<version>9.37.3</version> <!-- versión estable y actual -->
+		</dependency>
+
+
+
 	</dependencies>
 
 	<build>
