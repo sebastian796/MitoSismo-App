@@ -18,12 +18,14 @@ import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
 export default function RecentScreen() {
   const router = useRouter();
 
+  // Estados para búsqueda, filtros, datos y estados de carga.
   const [search, setSearch] = useState('');
   const [countryFilter, setCountryFilter] = useState('Todos');
   const [quakes, setQuakes] = useState<Quake[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Países disponibles para filtrar los sismos.
   const countries = [
     'Todos',
     'Perú',
@@ -31,15 +33,21 @@ export default function RecentScreen() {
     'Ecuador',
     'Colombia',
     'México',
+    'Internacional',
   ];
 
+  // Carga los sismos cada vez que cambia el país seleccionado.
   useEffect(() => {
     async function loadEarthquakes() {
       try {
         setLoading(true);
         setError(null);
 
-        const data = await fetchRecentEarthquakes(20);
+        const data =
+          countryFilter === 'Todos'
+            ? await fetchRecentEarthquakes(20)
+            : await fetchRecentEarthquakes(20, countryFilter);
+
         setQuakes(data);
       } catch (err) {
         console.error('Error al cargar sismos:', err);
@@ -50,19 +58,18 @@ export default function RecentScreen() {
     }
 
     loadEarthquakes();
-  }, []);
+  }, [countryFilter]);
 
+  // Filtra los sismos según el texto ingresado.
   const filteredQuakes = quakes.filter((q) => {
     const matchesSearch =
       q.place.toLowerCase().includes(search.toLowerCase()) ||
       q.country.toLowerCase().includes(search.toLowerCase());
 
-    const matchesCountry =
-      countryFilter === 'Todos' || q.country === countryFilter;
-
-    return matchesSearch && matchesCountry;
+    return matchesSearch;
   });
 
+  // Renderiza cada sismo utilizando el componente QuakeCard.
   const renderQuakeItem = ({ item }: { item: Quake }) => (
     <QuakeCard
       quake={item}
@@ -70,6 +77,7 @@ export default function RecentScreen() {
     />
   );
 
+  // Muestra un estado de carga mientras se consultan los datos.
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -86,6 +94,7 @@ export default function RecentScreen() {
     <SafeAreaView style={styles.safeArea}>
       <TopBar title="Sismos Recientes" />
 
+      {/* Mensaje mostrado cuando ocurre un error en la consulta. */}
       {error && (
         <View style={styles.emptyContainer}>
           <Ionicons
@@ -100,7 +109,7 @@ export default function RecentScreen() {
         </View>
       )}
 
-      {/* Search Bar */}
+      {/* Barra de búsqueda por ciudad o país. */}
       <View style={styles.searchContainer}>
         <Ionicons
           name="search"
@@ -128,7 +137,7 @@ export default function RecentScreen() {
         )}
       </View>
 
-      {/* Country Filter Chips */}
+      {/* Filtros para seleccionar un país. */}
       <View style={styles.chipsContainer}>
         <FlatList
           horizontal
@@ -158,7 +167,7 @@ export default function RecentScreen() {
         />
       </View>
 
-      {/* Quakes List */}
+      {/* Lista de sismos encontrados. */}
       <FlatList
         data={filteredQuakes}
         keyExtractor={(item) => item.id}
@@ -190,6 +199,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -201,21 +211,26 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     height: 44,
   },
+
   searchIcon: {
     marginRight: Spacing.sm,
   },
+
   searchInput: {
     flex: 1,
     fontSize: 14,
     color: Colors.textPrimary,
   },
+
   chipsContainer: {
     marginVertical: Spacing.md,
   },
+
   chipsList: {
     paddingHorizontal: Spacing.lg,
     gap: Spacing.sm,
   },
+
   chip: {
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
@@ -224,32 +239,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+
   chipActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
+
   chipText: {
     ...Typography.bodySmall,
     fontWeight: '600',
     color: Colors.textSecondary,
   },
+
   chipTextActive: {
     color: Colors.white,
   },
+
   listContent: {
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xxl,
   },
+
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.xxxl,
   },
+
   emptyTitle: {
     ...Typography.titleSmall,
     color: Colors.textSecondary,
     marginTop: Spacing.md,
   },
+
   emptySub: {
     ...Typography.bodyMedium,
     marginTop: 4,
