@@ -1,0 +1,11 @@
+package com.mito.sismo.repository;
+
+import com.mito.sismo.entity.UsuarioInsignia;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface UsuarioInsigniaRepository extends JpaRepository<UsuarioInsignia, Long> {
+    List<UsuarioInsignia> findByUsuarioId(Long usuarioId);
+    List<UsuarioInsignia> findByInsigniaId(Long insigniaId);
+}

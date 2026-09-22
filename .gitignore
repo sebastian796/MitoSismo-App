@@ -41,3 +41,9 @@ example
 # generated native folders
 /ios
 /android
+
+# Spring Boot / Backend
+server/target/
+server/build/
+server/.gradle/
+server/*.jar
