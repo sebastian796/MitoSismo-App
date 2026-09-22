@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  Share,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -65,6 +66,18 @@ export default function QuakeDetailScreen() {
       'Reporte Enviado',
       'Tu estado "Estoy a salvo" ha sido registrado y compartido con tus contactos.',
     );
+  };
+
+  const handleShareReport = async () => {
+    if (!quake || !info) return;
+
+    try {
+      await Share.share({
+        message: `⚠️ Sismo de magnitud ${quake.mag.toFixed(1)} (${info.label}) en ${quake.place}, ${quake.country}. Coordenadas: ${quake.coords}. Profundidad: ${quake.depth} km. Vía MitoSismo.`,
+      });
+    } catch {
+      Alert.alert('Error', 'No se pudo compartir el reporte.');
+    }
   };
 
   if (loading) {
@@ -151,6 +164,22 @@ export default function QuakeDetailScreen() {
           <Text style={styles.placeText}>
             {quake.place}
           </Text>
+        </Card>
+
+        {/* Map Preview */}
+        <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
+          Ubicación del Epicentro
+        </Text>
+        <Card style={styles.mapPreviewCard}>
+          <View style={styles.mapPreviewCanvas}>
+            <View style={[styles.mapPreviewPin, { borderColor: info.dot }]}>
+              <View style={[styles.mapPreviewDot, { backgroundColor: info.dot }]} />
+            </View>
+          </View>
+          <View style={styles.mapPreviewFooter}>
+            <Ionicons name="navigate" size={14} color={Colors.textSecondary} />
+            <Text style={styles.mapPreviewCoords}>{quake.coords}</Text>
+          </View>
         </Card>
 
         {/* Technical Details Grid */}
@@ -258,6 +287,12 @@ export default function QuakeDetailScreen() {
             variant={reported ? 'secondary' : 'accent'}
             disabled={reported}
             style={styles.reportButton}
+          />
+          <Button
+            title="Compartir Reporte"
+            variant="outline"
+            onPress={handleShareReport}
+            style={styles.shareButton}
           />
         </Card>
 
@@ -378,6 +413,45 @@ const styles = StyleSheet.create({
   },
   reportButton: {
     width: '100%',
+  },
+  mapPreviewCard: {
+    padding: 0,
+    overflow: 'hidden',
+  },
+  mapPreviewCanvas: {
+    height: 140,
+    backgroundColor: '#E5DFD3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapPreviewPin: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapPreviewDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  mapPreviewFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  mapPreviewCoords: {
+    ...Typography.bodySmall,
+    fontWeight: '600',
+  },
+  shareButton: {
+    width: '100%',
+    marginTop: Spacing.sm,
   },
   backAction: {
     marginTop: Spacing.xl,

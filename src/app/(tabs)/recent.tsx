@@ -171,6 +171,7 @@ export default function RecentScreen() {
       <FlatList
         data={filteredQuakes}
         keyExtractor={(item) => item.id}
+        initialNumToRender={10}
         renderItem={renderQuakeItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}

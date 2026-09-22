@@ -1,24 +1,43 @@
 import React from 'react';
+import { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { Logo, Button } from '../components';
 import { Colors, Spacing, Typography } from '../constants/theme';
 
 export default function SplashScreen() {
   const router = useRouter();
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(20);
+
+  useEffect(() => {
+    opacity.value = withTiming(1, { duration: 700, easing: Easing.out(Easing.ease) });
+    translateY.value = withTiming(0, { duration: 700, easing: Easing.out(Easing.ease) });
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.content}>
+        <Animated.View style={[styles.content, animatedStyle]}>
           <Logo size={96} />
           
           <Text style={styles.title}>MitoSismo</Text>
           <Text style={styles.subtitle}>
             Alerta, prevención y sabiduría ancestral ante sismos
           </Text>
-        </View>
+        </Animated.View>
 
         <View style={styles.actions}>
           <Button

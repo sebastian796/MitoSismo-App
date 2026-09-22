@@ -1,7 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { TopBar, Card, Ignis, Button } from '../components';
 import { ignisCreature } from '../constants/data';
@@ -9,6 +16,19 @@ import { Colors, Spacing, Typography, Radii } from '../constants/theme';
 
 export default function CreatureScreen() {
   const router = useRouter();
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    scale.value = withRepeat(
+      withTiming(1.06, { duration: 1400, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true
+    );
+  }, []);
+
+  const breatheStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -20,9 +40,9 @@ export default function CreatureScreen() {
       >
         {/* Hero Creature Showcase */}
         <Card style={styles.heroCard}>
-          <View style={styles.avatarContainer}>
+          <Animated.View style={[styles.avatarContainer, breatheStyle]}>
             <Ignis size={100} />
-          </View>
+          </Animated.View>
           <Text style={styles.creatureName}>{ignisCreature.name}</Text>
           <Text style={styles.creatureTitle}>{ignisCreature.title}</Text>
           

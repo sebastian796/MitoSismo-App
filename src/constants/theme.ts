@@ -32,13 +32,13 @@ export const Colors = {
   magFuerte: {
     bg: '#FFEBEE',
     text: '#C62828',
-    dot: '#E53935',
+    dot: '#E8521A',
     label: 'Fuerte',
   },
   magMayor: {
     bg: '#FFCDD2',
     text: '#B71C1C',
-    dot: '#7A0000',
+    dot: '#B71C1C',
     label: 'Mayor',
   },
 };
