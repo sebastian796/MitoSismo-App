@@ -1,7 +1,8 @@
 import type { Quake } from '../types/earthquake';
 
 // URL de consulta de la API de USGS.
-const USGS_API_URL = 'https://earthquake.usgs.gov/fdsnws/event/1/query';
+const USGS_API_URL =
+  'https://earthquake.usgs.gov/fdsnws/event/1/query';
 
 // Límites geográficos utilizados para los filtros por país.
 const COUNTRY_BOUNDS = {
@@ -11,24 +12,28 @@ const COUNTRY_BOUNDS = {
     minlongitude: -81.5,
     maxlongitude: -68.5,
   },
+
   Chile: {
     minlatitude: -56,
     maxlatitude: -17,
     minlongitude: -76,
     maxlongitude: -66,
   },
+
   Ecuador: {
     minlatitude: -5,
     maxlatitude: 2,
     minlongitude: -82,
     maxlongitude: -75,
   },
+
   Colombia: {
     minlatitude: -5,
     maxlatitude: 13,
     minlongitude: -80,
     maxlongitude: -66,
   },
+
   México: {
     minlatitude: 14,
     maxlatitude: 33,
@@ -194,7 +199,7 @@ export async function fetchRecentEarthquakes(
     limit: String(limit),
   });
 
-  // Agrega los límites del país seleccionado a la consulta si aplica.
+  // Agrega los límites del país seleccionado a la consulta.
   if (
     country &&
     country !== 'Todos' &&
@@ -210,10 +215,14 @@ export async function fetchRecentEarthquakes(
   }
 
   // Consulta la API de USGS.
-  const response = await fetch(`${USGS_API_URL}?${params.toString()}`);
+  const response = await fetch(
+    `${USGS_API_URL}?${params.toString()}`,
+  );
 
   if (!response.ok) {
-    throw new Error(`Error al consultar la API sísmica: ${response.status}`);
+    throw new Error(
+      `Error al consultar la API sísmica: ${response.status}`,
+    );
   }
 
   const data: USGSResponse = await response.json();
@@ -249,22 +258,28 @@ export async function fetchRecentEarthquakes(
 }
 
 // Obtiene un sismo específico mediante su ID de USGS.
-export async function fetchEarthquakeById(id: string): Promise<Quake | null> {
+export async function fetchEarthquakeById(
+  id: string,
+): Promise<Quake | null> {
   const params = new URLSearchParams({
     format: 'geojson',
     eventid: id,
   });
 
   // Consulta el evento específico.
-  const response = await fetch(`${USGS_API_URL}?${params.toString()}`);
+  const response = await fetch(
+    `${USGS_API_URL}?${params.toString()}`,
+  );
 
   if (!response.ok) {
-    throw new Error(`Error al consultar el sismo: ${response.status}`);
+    throw new Error(
+      `Error al consultar el sismo: ${response.status}`,
+    );
   }
 
   const data: USGSResponse = await response.json();
 
-  const feature = data.features?.[0];
+  const feature = data.features[0];
 
   if (!feature) {
     return null;

@@ -3,8 +3,8 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Quake } from '../../types/earthquake';
 import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
-import { Card } from '../core/Card';
-import { MagBadge } from '../core/MagBadge';
+import { Card } from '../ui/Card';
+import { MagBadge } from './MagBadge';
 
 interface QuakeCardProps {
   quake: Quake;
