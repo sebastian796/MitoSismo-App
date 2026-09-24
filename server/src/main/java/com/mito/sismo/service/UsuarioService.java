@@ -6,20 +6,16 @@ import com.mito.sismo.dto.entidades.UsuarioDTO;
 import com.mito.sismo.dto.request.LoginRequest;
 import com.mito.sismo.dto.request.UserCreateRequest;
 import com.mito.sismo.entity.Criatura;
-import com.mito.sismo.entity.RefreshToken;
 import com.mito.sismo.entity.Usuario;
 import com.mito.sismo.entity.UsuarioCriatura;
 import com.mito.sismo.exception.GeneralAuthException;
 import com.mito.sismo.repository.CriaturaRepository;
-import com.mito.sismo.repository.RefreshTokenRepository;
 import com.mito.sismo.repository.UsuarioCriaturaRepository;
 import com.mito.sismo.repository.UsuarioRepository;
 import com.mito.sismo.security.EncryptionUtil;
 import com.mito.sismo.security.JwtUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
 
 @Service
 public class UsuarioService {

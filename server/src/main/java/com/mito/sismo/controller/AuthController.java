@@ -1,27 +1,26 @@
 package com.mito.sismo.controller;
 
-import com.mito.sismo.dto.entidades.AccessTokenDTO;
+import com.mito.sismo.dto.entidades.RotateAccesToken;
 import com.mito.sismo.dto.entidades.UsuarioDTO;
+import com.mito.sismo.dto.request.TokenRequest;
 import com.mito.sismo.dto.request.UserCreateRequest;
 import com.mito.sismo.dto.request.LoginRequest;
+import com.mito.sismo.security.JwtUtil;
+import com.mito.sismo.service.RefreshTokenService;
 import com.mito.sismo.service.UsuarioService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("api/auth")
 public class AuthController {
 
     private final UsuarioService usuarioService;
-
-    public AuthController(UsuarioService usuarioService){
-        this.usuarioService = usuarioService;
-    }
-
+    private final RefreshTokenService refreshTokenService;
+    private final JwtUtil jwtUtil;
 
     @PostMapping("/registrar")
     public ResponseEntity<UsuarioDTO> registrarUsuario(
@@ -44,17 +43,30 @@ public class AuthController {
     }
 
     @PostMapping("/reflesh")
-    AccessTokenDTO refleshToken(RefleshTokenRequest refleshToken ){
-
+    public ResponseEntity<RotateAccesToken> refleshToken(
+            @Valid
+            @RequestBody
+            TokenRequest refleshToken
+    ){
+            RotateAccesToken accessToken = refreshTokenService.refrescarAccessToken(refleshToken);
+            return ResponseEntity.ok(accessToken);
     }
 
     @PostMapping("/invalidacion")
-    void logoutUser(Long userId){
-
+    public ResponseEntity<Void> logoutUser(
+            @RequestParam
+            Long userId
+    ){
+        refreshTokenService.revokeAllTokensForUser(userId);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/validacion")
-    boolean validateToken(TokenRequest tokenRequest){
-        return true;
+    public ResponseEntity<Boolean> validateToken(
+            @RequestBody
+            TokenRequest token
+    ){
+        boolean isValid = jwtUtil.validateToken(token.getToken());
+        return ResponseEntity.ok(isValid);
     }
 }
