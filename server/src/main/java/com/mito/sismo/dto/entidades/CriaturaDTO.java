@@ -18,14 +18,16 @@ import lombok.NoArgsConstructor;
         "elemento",
         "descripcion",
         "mitoLore",
+        "imageUrl"
 })
 public class CriaturaDTO {
 
-    private Long id;
+    private Integer id;
     private String nombre;
     private String titulo;
     private Elemento elemento;
     private String descripcion;
     private String mitoLore;
+    private String imageUrl;
 
 }

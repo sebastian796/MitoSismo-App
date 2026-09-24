@@ -31,7 +31,10 @@ public class Criatura {
 
     private String descripcion;
     private String mitoLore;
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
 
+    @Builder.Default
     private Instant createdAt = Instant.now();
 
     @OneToMany(mappedBy = "criatura", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)

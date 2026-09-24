@@ -1,5 +1,6 @@
 package com.mito.sismo.entity;
 
+import ch.qos.logback.core.joran.spi.DefaultClass;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,10 +27,14 @@ public class UsuarioCriatura {
     @JoinColumn(name = "criatura_id", nullable = false)
     private Criatura criatura;
 
+    @Builder.Default
     private Integer nivel = 1;
+    @Builder.Default
     private Integer xpActual = 0;
+    @Builder.Default
     private Boolean activa = true;
 
+    @Builder.Default
     private Instant updatedAt = Instant.now();
 
     @PreUpdate

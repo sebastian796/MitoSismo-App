@@ -1,5 +1,7 @@
 package com.mito.sismo.entity;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.mito.sismo.entity.enums.Pais;
 import com.mito.sismo.entity.enums.Role;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -31,21 +33,27 @@ public class Usuario {
     @NotBlank(message = "El Email es Obligatorio")
     @Email(message = "Debe ser Email Valido")
     @Column(unique = true,nullable = false,length = 150)
+    private String email;
+
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
+    @Builder.Default
     private Role rol = Role.USUARIO; // USUARIO o ADMIN
 
     @Size(max = 100)
     private String ciudad;
 
     @Size(max = 100)
-    private String pais;
+    @Enumerated(EnumType.STRING)
+    private Pais pais;
 
+    @Builder.Default
     @Column(name = "created_at", updatable = false)
     private Instant createdAt = Instant.now();
 
+    @Builder.Default
     @Column(name = "updated_at")
     private Instant updatedAt = Instant.now();
 

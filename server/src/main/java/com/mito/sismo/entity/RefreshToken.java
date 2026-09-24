@@ -27,13 +27,16 @@ public class RefreshToken {
     private String token;
 
     @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    @Builder.Default
+    private LocalDateTime expiresAt = LocalDateTime.now().plusDays(15);
 
     @Column(nullable = false)
+    @Builder.Default
     private Boolean revoked = false;
 
     @Column(name = "created_at", nullable = false,
             updatable = false)
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }
 
