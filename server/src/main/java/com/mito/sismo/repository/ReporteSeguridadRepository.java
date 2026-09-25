@@ -8,6 +8,6 @@ import java.util.List;
 
 public interface ReporteSeguridadRepository extends JpaRepository<ReporteSeguridad, Long> {
     List<ReporteSeguridad> findByUsuarioId(Long usuarioId);
-    List<ReporteSeguridad> findByEstadoSeguridad(EstadoSeguridad estado);
+    List<ReporteSeguridad> findByEstadoSeguridad(EstadoSeguridad estado_seguridad);
 }
 

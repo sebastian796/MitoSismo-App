@@ -35,6 +35,7 @@ public class Usuario {
     @Column(unique = true,nullable = false,length = 150)
     private String email;
 
+    @Column(name = "password_hash")
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)

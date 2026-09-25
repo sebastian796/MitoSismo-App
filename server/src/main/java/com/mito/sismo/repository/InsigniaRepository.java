@@ -8,5 +8,4 @@ import java.util.Optional;
 
 public interface InsigniaRepository extends JpaRepository<Insignia, Long> {
     Optional<Insignia> findByNombre(String nombre);
-    List<Insignia> findByCategoria(String categoria);
 }

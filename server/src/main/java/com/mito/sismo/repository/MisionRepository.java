@@ -8,6 +8,5 @@ import java.util.Optional;
 
 public interface MisionRepository extends JpaRepository<Mision, Long> {
     Optional<Mision> findByTitulo(String titulo);
-    List<Mision> findByDificultad(String dificultad);
 }
 

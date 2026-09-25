@@ -1,26 +1,29 @@
 package com.mito.sismo.security;
 
+import com.mito.sismo.dto.CustomUserPrincipal;
 import com.mito.sismo.exception.InvalidTokenException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collections;
 
 @Component
+@RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
 
-    public JwtFilter(JwtUtil jwtUtil) {
-        this.jwtUtil = jwtUtil;
-    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -30,33 +33,39 @@ public class JwtFilter extends OncePerRequestFilter {
 
         final String authHeader = request.getHeader("Authorization");
 
-        String username = null;
-        String jwtToken = null;
-
-        // Extraer token del header
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            jwtToken = authHeader.substring(7);
+            String jwtToken = authHeader.substring(7);
             try {
-                if (jwtUtil.validateAccessToken(jwtToken)) {
-                    username = jwtUtil.extractUsername(jwtToken);
-                } else {
+                if (!jwtUtil.validateToken(jwtToken)) {
                     throw new InvalidTokenException("El token ha expirado o no es válido.");
                 }
+
+                // Extraer claims del token
+                Long userId = jwtUtil.extractUserId(jwtToken);
+                String email = jwtUtil.extractEmail(jwtToken);
+                String role = jwtUtil.extractRole(jwtToken);
+
+                // Configurar contexto de seguridad
+                if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    GrantedAuthority authority = new SimpleGrantedAuthority(role);
+
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    new CustomUserPrincipal(userId, email, role), // principal con datos del usuario
+                                    null,
+                                    Collections.singletonList(authority)
+                            );
+
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+
             } catch (InvalidTokenException e) {
                 logger.error("Error de autenticación JWT: " + e.getMessage());
-                throw e; // Propaga la excepción para que el GlobalExceptionHandler la maneje
+                throw e;
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw new RuntimeException("Error procesando JWT", e);
             }
-
-        }
-
-        // Si el token es válido, configurar el contexto de seguridad
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(username, null, null);
-            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
         filterChain.doFilter(request, response);

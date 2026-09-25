@@ -22,6 +22,11 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final JwtUtil jwtUtil;
 
+    @GetMapping("/")
+    public String saludar(){
+        return ":: API MitoSismos: Funcional";
+    }
+
     @PostMapping("/registrar")
     public ResponseEntity<UsuarioDTO> registrarUsuario(
             @Valid
