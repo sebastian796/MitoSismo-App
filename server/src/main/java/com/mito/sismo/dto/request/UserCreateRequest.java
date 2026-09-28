@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 @Builder
 public class UserCreateRequest {
 
@@ -32,13 +34,11 @@ public class UserCreateRequest {
     @Size(max = 100)
     private String ciudad;
 
-    @Size(max = 100)
     @NotNull(message = "El Pais es obligatorio")
-    private Pais pais;
+    private String pais;
 
     // Datos de Criatura
 
     private Long criaturaId;
-
 
 }

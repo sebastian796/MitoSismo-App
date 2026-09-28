@@ -5,6 +5,7 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -14,6 +15,15 @@ public class JwtUtil {
 
     @Value("${jwt.secret}")
     private String secret;
+
+    @PostConstruct
+    public void checkSecret() {
+        System.out.println("Secret length: " + secret.length());
+        if (secret.length() <= 32) {
+            throw new IllegalStateException("JWT secret demasiado corto: " + secret.length());
+        }
+    }
+
 
     // Genera Access Token con expiración de 15 minutos
     public String generateAccessToken(Long userId, String username, String email, String role) {

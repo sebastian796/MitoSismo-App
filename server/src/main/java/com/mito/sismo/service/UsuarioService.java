@@ -8,6 +8,7 @@ import com.mito.sismo.dto.request.UserCreateRequest;
 import com.mito.sismo.entity.Criatura;
 import com.mito.sismo.entity.Usuario;
 import com.mito.sismo.entity.UsuarioCriatura;
+import com.mito.sismo.entity.enums.Pais;
 import com.mito.sismo.exception.GeneralAuthException;
 import com.mito.sismo.repository.CriaturaRepository;
 import com.mito.sismo.repository.UsuarioCriaturaRepository;
@@ -61,7 +62,7 @@ public class UsuarioService {
                 .nombre(userCreate.getNombreUsuario())
                 .email(userCreate.getEmail())
                 .passwordHash(encrypt.encryptPassword(userCreate.getPassword()))
-                .pais(userCreate.getPais())
+                .pais(Pais.valueOf((userCreate.getPais())))
                 .ciudad(userCreate.getCiudad())
                 .build());
 
