@@ -26,3 +26,11 @@ src/app/(tabs)/map.tsx, src/app/prevention.tsx, src/app/(tabs)/profile.tsx
 Pendiente-------------------------------------
 
 Módulo Back-end (feature/backend-api-services): no existe aún en el repo.
+
+## Inicio y Notificaciones (feature/home-notificaciones)
+
+- `src/app/(tabs)/index.tsx`: sismos reales (USGS), selector de país, pull-to-refresh, estados de carga/error, mensaje de Ignis según magnitud.
+- `src/app/settings/`: menú de Configuración y pantalla de Notificaciones (persistente, con filtros de magnitud/país, consejos, misiones y sonido).
+- `src/services/notificationService.ts` + context + hook: notificaciones locales; en Expo Go/web usa avisos alternativos.
+- `src/services/earthquakeService.ts`: corregido el detalle de sismo (USGS devuelve un Feature) y caché de sismos.
+- Pendiente: Mapa/Misiones/Perfil aún con datos simulados; notificaciones con la app cerrada requieren push desde el backend; sincronizar configuración con configuraciones_usuario.

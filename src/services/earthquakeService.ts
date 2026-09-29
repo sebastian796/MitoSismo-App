@@ -1,8 +1,8 @@
-import type { Quake } from '../types/earthquake';
+import type { Quake } from "../types/earthquake";
+const quakeCache = new Map<string, Quake>();
 
 // URL de consulta de la API de USGS.
-const USGS_API_URL =
-  'https://earthquake.usgs.gov/fdsnws/event/1/query';
+const USGS_API_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query";
 
 // Límites geográficos utilizados para los filtros por país.
 const COUNTRY_BOUNDS = {
@@ -65,7 +65,7 @@ type USGSResponse = {
 // Convierte el timestamp a un tiempo relativo.
 function formatRelativeTime(timestamp: number | null): string {
   if (!timestamp) {
-    return 'Fecha desconocida';
+    return "Fecha desconocida";
   }
 
   const date = new Date(timestamp);
@@ -77,7 +77,7 @@ function formatRelativeTime(timestamp: number | null): string {
   const diffDays = Math.floor(diffHours / 24);
 
   if (diffMinutes < 1) {
-    return 'Hace unos segundos';
+    return "Hace unos segundos";
   }
 
   if (diffMinutes < 60) {
@@ -89,7 +89,7 @@ function formatRelativeTime(timestamp: number | null): string {
   }
 
   if (diffDays === 1) {
-    return 'Ayer';
+    return "Ayer";
   }
 
   return `Hace ${diffDays} días`;
@@ -98,19 +98,19 @@ function formatRelativeTime(timestamp: number | null): string {
 // Formatea la fecha completa del sismo.
 function formatFullDate(timestamp: number | null): string {
   if (!timestamp) {
-    return 'Fecha desconocida';
+    return "Fecha desconocida";
   }
 
-  return new Date(timestamp).toLocaleString('es-PE', {
-    dateStyle: 'medium',
-    timeStyle: 'medium',
+  return new Date(timestamp).toLocaleString("es-PE", {
+    dateStyle: "medium",
+    timeStyle: "medium",
   });
 }
 
 // Formatea las coordenadas para mostrarlas en pantalla.
 function formatCoordinates(lat: number, lng: number): string {
-  const latitudeDirection = lat >= 0 ? 'N' : 'S';
-  const longitudeDirection = lng >= 0 ? 'E' : 'O';
+  const latitudeDirection = lat >= 0 ? "N" : "S";
+  const longitudeDirection = lng >= 0 ? "E" : "O";
 
   return `${Math.abs(lat).toFixed(3)}°${latitudeDirection}  ${Math.abs(
     lng,
@@ -120,36 +120,36 @@ function formatCoordinates(lat: number, lng: number): string {
 // Determina el país a partir de la ubicación proporcionada por USGS.
 function extractCountry(place: string): string {
   if (!place) {
-    return 'Internacional';
+    return "Internacional";
   }
 
   // Normaliza el texto para evitar problemas con tildes.
   const normalizedPlace = place
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
-  if (normalizedPlace.includes('peru')) {
-    return 'Perú';
+  if (normalizedPlace.includes("peru")) {
+    return "Perú";
   }
 
-  if (normalizedPlace.includes('chile')) {
-    return 'Chile';
+  if (normalizedPlace.includes("chile")) {
+    return "Chile";
   }
 
-  if (normalizedPlace.includes('ecuador')) {
-    return 'Ecuador';
+  if (normalizedPlace.includes("ecuador")) {
+    return "Ecuador";
   }
 
-  if (normalizedPlace.includes('colombia')) {
-    return 'Colombia';
+  if (normalizedPlace.includes("colombia")) {
+    return "Colombia";
   }
 
-  if (normalizedPlace.includes('mexico')) {
-    return 'México';
+  if (normalizedPlace.includes("mexico")) {
+    return "México";
   }
 
-  return 'Internacional';
+  return "Internacional";
 }
 
 // Convierte los datos de USGS al modelo Quake de la aplicación.
@@ -170,22 +170,22 @@ function mapFeatureToQuake(
 
   const [lng, lat, depth] = geometry.coordinates;
 
-  return {
+  const quake: Quake = {
     id: feature.id,
     mag: properties.mag,
-    magType: properties.magType ?? 'Desconocida',
+    magType: properties.magType ?? "Desconocida",
     place: properties.place,
     depth: Number(depth.toFixed(1)),
     time: formatRelativeTime(properties.time),
-
-    // Usa el país del filtro o lo obtiene desde el lugar.
     country: country ?? extractCountry(properties.place),
-
     lat,
     lng,
     coords: formatCoordinates(lat, lng),
     fullDate: formatFullDate(properties.time),
   };
+
+  quakeCache.set(quake.id, quake);
+  return quake;
 }
 
 // Obtiene los sismos recientes y aplica filtros geográficos.
@@ -194,35 +194,31 @@ export async function fetchRecentEarthquakes(
   country?: string,
 ): Promise<Quake[]> {
   const params = new URLSearchParams({
-    format: 'geojson',
-    orderby: 'time',
+    format: "geojson",
+    orderby: "time",
     limit: String(limit),
   });
 
   // Agrega los límites del país seleccionado a la consulta.
   if (
     country &&
-    country !== 'Todos' &&
-    country !== 'Internacional' &&
+    country !== "Todos" &&
+    country !== "Internacional" &&
     country in COUNTRY_BOUNDS
   ) {
     const bounds = COUNTRY_BOUNDS[country as keyof typeof COUNTRY_BOUNDS];
 
-    params.set('minlatitude', String(bounds.minlatitude));
-    params.set('maxlatitude', String(bounds.maxlatitude));
-    params.set('minlongitude', String(bounds.minlongitude));
-    params.set('maxlongitude', String(bounds.maxlongitude));
+    params.set("minlatitude", String(bounds.minlatitude));
+    params.set("maxlatitude", String(bounds.maxlatitude));
+    params.set("minlongitude", String(bounds.minlongitude));
+    params.set("maxlongitude", String(bounds.maxlongitude));
   }
 
   // Consulta la API de USGS.
-  const response = await fetch(
-    `${USGS_API_URL}?${params.toString()}`,
-  );
+  const response = await fetch(`${USGS_API_URL}?${params.toString()}`);
 
   if (!response.ok) {
-    throw new Error(
-      `Error al consultar la API sísmica: ${response.status}`,
-    );
+    throw new Error(`Error al consultar la API sísmica: ${response.status}`);
   }
 
   const data: USGSResponse = await response.json();
@@ -240,13 +236,13 @@ export async function fetchRecentEarthquakes(
     .filter((quake): quake is Quake => quake !== null);
 
   // Internacional excluye los países que tienen filtros propios.
-  if (country === 'Internacional') {
+  if (country === "Internacional") {
     const excludedCountries = [
-      'Perú',
-      'Chile',
-      'Ecuador',
-      'Colombia',
-      'México',
+      "Perú",
+      "Chile",
+      "Ecuador",
+      "Colombia",
+      "México",
     ];
 
     return quakes
@@ -258,33 +254,27 @@ export async function fetchRecentEarthquakes(
 }
 
 // Obtiene un sismo específico mediante su ID de USGS.
-export async function fetchEarthquakeById(
-  id: string,
-): Promise<Quake | null> {
-  const params = new URLSearchParams({
-    format: 'geojson',
-    eventid: id,
-  });
+export async function fetchEarthquakeById(id: string): Promise<Quake | null> {
+  // Si ya vino en una lista (Inicio, Sismos), no hace falta pedirlo otra vez.
+  const cached = quakeCache.get(id);
+  if (cached) return cached;
 
-  // Consulta el evento específico.
-  const response = await fetch(
-    `${USGS_API_URL}?${params.toString()}`,
-  );
+  const params = new URLSearchParams({ format: "geojson", eventid: id });
+  const response = await fetch(`${USGS_API_URL}?${params.toString()}`);
 
   if (!response.ok) {
-    throw new Error(
-      `Error al consultar el sismo: ${response.status}`,
-    );
+    throw new Error(`Error al consultar el sismo: ${response.status}`);
   }
 
-  const data: USGSResponse = await response.json();
+  const data = await response.json();
 
-  const feature = data.features[0];
+  // Con eventid, USGS devuelve un solo Feature; con listas, un FeatureCollection.
+  const feature: USGSFeature | undefined = Array.isArray(data?.features)
+    ? data.features[0]
+    : data?.type === "Feature"
+      ? data
+      : undefined;
 
-  if (!feature) {
-    return null;
-  }
-
-  // Convierte el resultado al modelo de la aplicación.
+  if (!feature) return null;
   return mapFeatureToQuake(feature);
 }
