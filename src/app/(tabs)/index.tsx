@@ -20,6 +20,7 @@ import {
   Typography,
   magInfo,
 } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
 import { useNotificationSettings } from "../../context/NotificationSettingsContext";
 import { fetchRecentEarthquakes } from "../../services/earthquakeService";
 import type { Quake } from "../../types/earthquake";
@@ -52,6 +53,8 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
+
+  const { user } = useAuth();
 
   const load = useCallback(async (c: string, isRefresh = false) => {
     const id = ++requestId.current;
@@ -101,7 +104,9 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>{greeting()}, Explorador</Text>
+            <Text style={styles.greeting}>
+              {greeting()}, {user?.nombreUsuario ?? "Explorador"}
+            </Text>
             <Text style={styles.subGreeting}>
               Monitoreo sísmico en tiempo real
             </Text>
@@ -128,7 +133,8 @@ export default function HomeScreen() {
               <View style={styles.creatureTextCol}>
                 <View style={styles.creatureTag}>
                   <Text style={styles.creatureTagText}>
-                    Nivel {ignisCreature.level} • {ignisCreature.name}
+                    Nivel {user?.dataMascota?.nivel ?? ignisCreature.level} •{" "}
+                    {ignisCreature.name}
                   </Text>
                 </View>
                 <Text style={styles.creatureTitle}>Guardián Activo</Text>

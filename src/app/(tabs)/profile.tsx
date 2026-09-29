@@ -4,9 +4,11 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, TopBar } from "../../components";
 import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { user, logout } = useAuth();
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -36,22 +38,28 @@ export default function ProfileScreen() {
           <View style={styles.avatar}>
             <Ionicons name="person" size={36} color={Colors.white} />
           </View>
-          <Text style={styles.userName}>Sebastian Belli</Text>
-          <Text style={styles.userRole}>Brigadista • Lima, Perú</Text>
+          <Text style={styles.userName}>
+            {user?.nombreUsuario ?? "Invitado"}
+          </Text>
+          <Text style={styles.userRole}>
+            {user ? user.email : "Inicia sesión para guardar tu progreso"}
+          </Text>
         </Card>
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           <Card style={styles.statBox}>
-            <Text style={styles.statNumber}>12</Text>
+            <Text style={styles.statNumber}>0</Text>
             <Text style={styles.statLabel}>Sismos Reportados</Text>
           </Card>
           <Card style={styles.statBox}>
-            <Text style={styles.statNumber}>4</Text>
+            <Text style={styles.statNumber}>0</Text>
             <Text style={styles.statLabel}>Misiones Hechas</Text>
           </Card>
           <Card style={styles.statBox}>
-            <Text style={styles.statNumber}>350</Text>
+            <Text style={styles.statNumber}>
+              {user?.dataMascota?.xpActual ?? 0}
+            </Text>
             <Text style={styles.statLabel}>XP Total</Text>
           </Card>
         </View>
@@ -94,12 +102,23 @@ export default function ProfileScreen() {
         {/* Settings Section */}
 
         {/* Logout */}
-        <Button
-          title="Cerrar Sesión"
-          variant="outline"
-          onPress={() => router.replace("/")}
-          style={styles.logoutButton}
-        />
+        {user ? (
+          <Button
+            title="Cerrar Sesión"
+            variant="outline"
+            onPress={async () => {
+              await logout();
+              router.replace("/");
+            }}
+            style={styles.logoutButton}
+          />
+        ) : (
+          <Button
+            title="Iniciar Sesión"
+            onPress={() => router.push("/(auth)/login")}
+            style={styles.logoutButton}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
