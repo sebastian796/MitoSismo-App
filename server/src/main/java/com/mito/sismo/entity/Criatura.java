@@ -40,4 +40,5 @@ public class Criatura {
     @OneToMany(mappedBy = "criatura", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<UsuarioCriatura> usuarios = new HashSet<>();
 
+
 }

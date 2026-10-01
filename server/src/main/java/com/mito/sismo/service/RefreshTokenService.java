@@ -1,6 +1,6 @@
 package com.mito.sismo.service;
 
-import com.mito.sismo.dto.entidades.RotateAccesToken;
+import com.mito.sismo.dto.entidades.RotateAccesTokenDTO;
 import com.mito.sismo.dto.request.TokenRequest;
 import com.mito.sismo.entity.RefreshToken;
 import com.mito.sismo.entity.Usuario;
@@ -10,6 +10,7 @@ import com.mito.sismo.repository.UsuarioRepository;
 import com.mito.sismo.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -87,7 +88,8 @@ public class RefreshTokenService {
     }
 
     // Refrescar Token antiguo por nuevo
-    public RotateAccesToken refrescarAccessToken(TokenRequest refreshTokenRequest){
+    @Transactional
+    public RotateAccesTokenDTO refrescarAccessToken(TokenRequest refreshTokenRequest){
         // Validar Refresh Token
         RefreshToken refreshTokenAntiguo = validateRefreshToken(refreshTokenRequest.getToken())
                 .orElseThrow(()-> new GeneralAuthException(
@@ -99,7 +101,7 @@ public class RefreshTokenService {
         String accessToken = generarAccessToken(refreshTokenAntiguo.getUsuario());
         String refreshToken = generarRefreshToken(refreshTokenAntiguo.getUsuario());
         rotateToken(refreshTokenAntiguo,refreshToken);
-        return RotateAccesToken.builder()
+        return RotateAccesTokenDTO.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .build();

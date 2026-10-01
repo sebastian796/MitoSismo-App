@@ -15,10 +15,12 @@ import com.mito.sismo.repository.UsuarioCriaturaRepository;
 import com.mito.sismo.repository.UsuarioRepository;
 import com.mito.sismo.security.EncryptionUtil;
 import com.mito.sismo.security.JwtUtil;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class UsuarioService {
 
     private final EncryptionUtil encrypt;
@@ -28,22 +30,8 @@ public class UsuarioService {
     private final CriaturaRepository criaturaRepository;
     private final UsuarioCriaturaRepository usuarioCriaturaRepository;
     private final RefreshTokenService refreshTokenService;
+    private final MisionService misionService;
 
-    public UsuarioService(
-            EncryptionUtil encryptionUtil,
-            JwtUtil jwtUtil,
-            UsuarioRepository usuarioRepository,
-            CriaturaRepository criaturaRepository,
-            UsuarioCriaturaRepository usuarioCriaturaRepository,
-            RefreshTokenService refreshTokenService
-    ){
-        this.encrypt = encryptionUtil;
-        this.jwtUtil = jwtUtil;
-        this.usuarioRepository = usuarioRepository;
-        this.criaturaRepository = criaturaRepository;
-        this.usuarioCriaturaRepository = usuarioCriaturaRepository;
-        this.refreshTokenService = refreshTokenService;
-    }
 
     // Registro de Nuevo Usuario
     @Transactional
@@ -57,6 +45,7 @@ public class UsuarioService {
             );
         }
 
+
         // Registrar Usuario
         Usuario usuario = usuarioRepository.save(Usuario.builder()
                 .nombre(userCreate.getNombreUsuario())
@@ -66,6 +55,8 @@ public class UsuarioService {
                 .ciudad(userCreate.getCiudad())
                 .build());
 
+        // Registrar lista de misiones
+        misionService.inicializarMisionesParaUsuario(usuario.getId());
 
         // Guardar Token
         String refreshToken = refreshTokenService.generarRefreshToken(usuario);
