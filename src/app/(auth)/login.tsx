@@ -1,38 +1,65 @@
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { TopBar, Logo, Input, Button } from '../../components';
-import { Colors, Spacing, Typography } from '../../constants/theme';
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Button, Input, Logo, TopBar } from "../../components";
+import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
+import { ApiError } from "../../services/authService";
+import { validateEmail } from "../../utils/validation";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
+    {},
+  );
+  const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    setFormError("");
+    const next = {
+      email: validateEmail(email),
+      password: password ? undefined : "Ingresa tu contraseña.",
+    };
+    setErrors(next);
+    if (next.email || next.password) return;
+
     setLoading(true);
-    setTimeout(() => {
+    try {
+      await login(email, password);
+      router.replace("/(tabs)");
+    } catch (e) {
+      setFormError(
+        e instanceof ApiError ? e.message : "Ocurrió un error inesperado.",
+      );
+    } finally {
       setLoading(false);
-      router.replace('/(tabs)');
-    }, 600);
+    }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <TopBar title="Iniciar Sesión" showBack onBack={() => router.replace('/')} />
-      
+      <TopBar
+        title="Iniciar Sesión"
+        showBack
+        onBack={() => router.replace("/")}
+      />
+
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
       >
         <ScrollView
@@ -47,21 +74,41 @@ export default function LoginScreen() {
             </Text>
           </View>
 
+          {!!formError && (
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle" size={18} color="#B71C1C" />
+              <Text style={styles.errorText}>{formError}</Text>
+            </View>
+          )}
+
           <View style={styles.form}>
             <Input
               label="Correo Electrónico"
               placeholder="ejemplo@correo.com"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(t) => {
+                setEmail(t);
+                setErrors((p) => ({ ...p, email: undefined }));
+                setFormError("");
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
+              error={errors.email}
             />
             <Input
               label="Contraseña"
               placeholder="••••••••"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(t) => {
+                setPassword(t);
+                setErrors((p) => ({ ...p, password: undefined }));
+                setFormError("");
+              }}
               secureTextEntry
+              autoCapitalize="none"
+              error={errors.password}
+              onSubmitEditing={handleLogin}
             />
 
             <Button
@@ -74,7 +121,7 @@ export default function LoginScreen() {
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>¿No tienes una cuenta? </Text>
-              <Pressable onPress={() => router.push('/(auth)/register')}>
+              <Pressable onPress={() => router.push("/(auth)/register")}>
                 <Text style={styles.registerLink}>Regístrate aquí</Text>
               </Pressable>
             </View>
@@ -86,48 +133,37 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  flex: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.xxxl,
-  },
-  header: {
-    alignItems: 'center',
-    marginVertical: Spacing.xl,
-  },
-  welcomeText: {
-    ...Typography.titleMedium,
-    marginTop: Spacing.md,
-  },
+  safeArea: { flex: 1, backgroundColor: Colors.background },
+  flex: { flex: 1 },
+  scrollContent: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing.xxxl },
+  header: { alignItems: "center", marginVertical: Spacing.xl },
+  welcomeText: { ...Typography.titleMedium, marginTop: Spacing.md },
   subtitleText: {
     ...Typography.bodyMedium,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: Spacing.xs,
   },
-  form: {
-    marginTop: Spacing.md,
+  errorBox: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    alignItems: "center",
+    backgroundColor: "#FFEBEE",
+    borderRadius: Radii.md,
+    padding: Spacing.md,
   },
-  loginButton: {
-    marginTop: Spacing.lg,
-  },
+  errorText: { flex: 1, fontSize: 13, color: "#B71C1C" },
+  form: { marginTop: Spacing.md },
+  loginButton: { marginTop: Spacing.lg },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: Spacing.xl,
   },
-  footerText: {
-    ...Typography.bodyMedium,
-  },
+  footerText: { ...Typography.bodyMedium },
   registerLink: {
     ...Typography.bodyMedium,
     color: Colors.accent,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

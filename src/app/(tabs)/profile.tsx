@@ -1,20 +1,33 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { TopBar, Card, Button } from '../../components';
-import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Button, Card, TopBar } from "../../components";
+import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const [notifQuakes, setNotifQuakes] = useState(true);
-  const [notifTips, setNotifTips] = useState(true);
-  const [soundAlerts, setSoundAlerts] = useState(false);
+  const { user, logout } = useAuth();
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <TopBar title="Mi Perfil" />
+      <TopBar
+        title="Mi Perfil"
+        rightElement={
+          <Pressable
+            onPress={() => router.push("/settings")}
+            style={styles.gearButton}
+            hitSlop={8}
+          >
+            <Ionicons
+              name="settings-outline"
+              size={20}
+              color={Colors.primary}
+            />
+          </Pressable>
+        }
+      />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -25,22 +38,28 @@ export default function ProfileScreen() {
           <View style={styles.avatar}>
             <Ionicons name="person" size={36} color={Colors.white} />
           </View>
-          <Text style={styles.userName}>Sebastian Belli</Text>
-          <Text style={styles.userRole}>Brigadista • Lima, Perú</Text>
+          <Text style={styles.userName}>
+            {user?.nombreUsuario ?? "Invitado"}
+          </Text>
+          <Text style={styles.userRole}>
+            {user ? user.email : "Inicia sesión para guardar tu progreso"}
+          </Text>
         </Card>
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           <Card style={styles.statBox}>
-            <Text style={styles.statNumber}>12</Text>
+            <Text style={styles.statNumber}>0</Text>
             <Text style={styles.statLabel}>Sismos Reportados</Text>
           </Card>
           <Card style={styles.statBox}>
-            <Text style={styles.statNumber}>4</Text>
+            <Text style={styles.statNumber}>0</Text>
             <Text style={styles.statLabel}>Misiones Hechas</Text>
           </Card>
           <Card style={styles.statBox}>
-            <Text style={styles.statNumber}>350</Text>
+            <Text style={styles.statNumber}>
+              {user?.dataMascota?.xpActual ?? 0}
+            </Text>
             <Text style={styles.statLabel}>XP Total</Text>
           </Card>
         </View>
@@ -56,7 +75,7 @@ export default function ProfileScreen() {
           contentContainerStyle={styles.badgesRow}
         >
           <Card style={styles.badgeCard}>
-            <View style={[styles.badgeIconBox, { backgroundColor: '#E8F5E9' }]}>
+            <View style={[styles.badgeIconBox, { backgroundColor: "#E8F5E9" }]}>
               <Ionicons name="shield-checkmark" size={24} color="#2E7D32" />
             </View>
             <Text style={styles.badgeName}>Zona Segura</Text>
@@ -64,7 +83,7 @@ export default function ProfileScreen() {
           </Card>
 
           <Card style={styles.badgeCard}>
-            <View style={[styles.badgeIconBox, { backgroundColor: '#FFF3E0' }]}>
+            <View style={[styles.badgeIconBox, { backgroundColor: "#FFF3E0" }]}>
               <Ionicons name="bag" size={24} color="#E65100" />
             </View>
             <Text style={styles.badgeName}>Mochila Lista</Text>
@@ -72,7 +91,7 @@ export default function ProfileScreen() {
           </Card>
 
           <Card style={styles.badgeCard}>
-            <View style={[styles.badgeIconBox, { backgroundColor: '#EDE7F6' }]}>
+            <View style={[styles.badgeIconBox, { backgroundColor: "#EDE7F6" }]}>
               <Ionicons name="flame" size={24} color="#512DA8" />
             </View>
             <Text style={styles.badgeName}>Amigo de Ignis</Text>
@@ -81,62 +100,25 @@ export default function ProfileScreen() {
         </ScrollView>
 
         {/* Settings Section */}
-        <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
-          Preferencias de Alertas
-        </Text>
-
-        <Card style={styles.settingsCard}>
-          <View style={styles.settingItem}>
-            <View style={styles.settingTextCol}>
-              <Text style={styles.settingTitle}>Notificaciones de Sismos</Text>
-              <Text style={styles.settingSub}>Alertas inmediatas en M ≥ 4.5</Text>
-            </View>
-            <Switch
-              value={notifQuakes}
-              onValueChange={setNotifQuakes}
-              trackColor={{ false: Colors.border, true: Colors.accent }}
-              thumbColor={Colors.white}
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.settingItem}>
-            <View style={styles.settingTextCol}>
-              <Text style={styles.settingTitle}>Consejos Diarios de Prevención</Text>
-              <Text style={styles.settingSub}>Misiones y recordatorios de preparación</Text>
-            </View>
-            <Switch
-              value={notifTips}
-              onValueChange={setNotifTips}
-              trackColor={{ false: Colors.border, true: Colors.accent }}
-              thumbColor={Colors.white}
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.settingItem}>
-            <View style={styles.settingTextCol}>
-              <Text style={styles.settingTitle}>Alerta Sonora Prioritaria</Text>
-              <Text style={styles.settingSub}>Sonido en sismos de alta intensidad</Text>
-            </View>
-            <Switch
-              value={soundAlerts}
-              onValueChange={setSoundAlerts}
-              trackColor={{ false: Colors.border, true: Colors.accent }}
-              thumbColor={Colors.white}
-            />
-          </View>
-        </Card>
 
         {/* Logout */}
-        <Button
-          title="Cerrar Sesión"
-          variant="outline"
-          onPress={() => router.replace('/')}
-          style={styles.logoutButton}
-        />
+        {user ? (
+          <Button
+            title="Cerrar Sesión"
+            variant="outline"
+            onPress={async () => {
+              await logout();
+              router.replace("/");
+            }}
+            style={styles.logoutButton}
+          />
+        ) : (
+          <Button
+            title="Iniciar Sesión"
+            onPress={() => router.push("/(auth)/login")}
+            style={styles.logoutButton}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -154,7 +136,7 @@ const styles = StyleSheet.create({
   },
   userCard: {
     padding: Spacing.xl,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: Spacing.lg,
   },
   avatar: {
@@ -162,8 +144,8 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing.md,
   },
   userName: {
@@ -174,25 +156,25 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   statsGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.sm,
   },
   statBox: {
     flex: 1,
     padding: Spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   statNumber: {
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: "800",
     color: Colors.accent,
   },
   statLabel: {
     fontSize: 10,
     color: Colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   sectionTitle: {
     ...Typography.titleSmall,
@@ -204,21 +186,21 @@ const styles = StyleSheet.create({
   badgeCard: {
     width: 120,
     padding: Spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   badgeIconBox: {
     width: 48,
     height: 48,
     borderRadius: Radii.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing.sm,
   },
   badgeName: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textPrimary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   badgeStatus: {
     fontSize: 10,
@@ -230,9 +212,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: Spacing.md,
   },
   settingTextCol: {
@@ -241,7 +223,7 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     ...Typography.bodyLarge,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   settingSub: {
     ...Typography.bodySmall,
@@ -253,5 +235,13 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     marginTop: Spacing.xl,
+  },
+  gearButton: {
+    width: 36,
+    height: 36,
+    borderRadius: Radii.md,
+    backgroundColor: Colors.surfaceAlt,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
