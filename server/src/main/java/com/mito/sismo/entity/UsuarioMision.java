@@ -1,5 +1,6 @@
 package com.mito.sismo.entity;
 
+import com.mito.sismo.entity.enums.Estado;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,7 +23,7 @@ public class UsuarioMision {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "mision_id", nullable = false)
     private Mision mision;
 
@@ -30,13 +31,16 @@ public class UsuarioMision {
     private Integer progreso = 0;
 
     @Column(nullable = false)
+    @Builder.Default
     private Boolean completada = false;
 
     @Column(name = "fecha_completada")
     private Instant fechaCompletada;
 
     @Column(name = "estado", length = 20, nullable = false)
-    private String estado = "LOCKED";
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    private Estado estado = Estado.LOCKED;
 
     @Column(name = "xp_otorgada", nullable = false)
     private Boolean xpOtorgada = false;

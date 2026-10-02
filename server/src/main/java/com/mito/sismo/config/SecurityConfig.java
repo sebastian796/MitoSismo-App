@@ -29,6 +29,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**","/").permitAll()// endpoints de login/registro/refresh accesibles sin token
+                        .requestMatchers("/api/misiones/**").hasAuthority("USUARIO")
                         .anyRequest().authenticated()                // el resto requiere token válido
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
