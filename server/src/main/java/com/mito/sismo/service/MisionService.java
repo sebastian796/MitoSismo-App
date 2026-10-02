@@ -85,7 +85,7 @@ public class MisionService {
                 .map(MisionDTO::fromEntity).collect(Collectors.toList());
         return listMisiones;
     }
-
+/*
     // Validar Mision
     @Transactional
     public void completarMision(
@@ -125,7 +125,7 @@ public class MisionService {
         // Calcular la experiencia agregada al completar la mision
     }
 
-
+*/
     // Inicializar misiones cuando se registra usuario
     @Transactional
     public void inicializarMisionesParaUsuario(Long usuarioId) {

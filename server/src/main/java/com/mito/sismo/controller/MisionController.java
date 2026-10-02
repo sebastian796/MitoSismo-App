@@ -44,7 +44,7 @@ public class MisionController {
         List<MisionDTO> listMissionIncomplet = misionService.getListMissionIncomplet(authHeader);
         return ResponseEntity.ok(listMissionIncomplet);
     }
-
+/*
     // Marcar Mision Completa
     @PostMapping("/completada")
     ResponseEntity<Void> completarMision(
@@ -55,7 +55,7 @@ public class MisionController {
     ){
         misionService.completarMision(idMision, authHeader);
     }
-
+*/
 
 
 }
