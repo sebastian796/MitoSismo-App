@@ -27,19 +27,13 @@ public class MisionService {
     private final MisionRepository misionRepository;
     private final UsuarioMisionRepository userMisionRepository;
     private final UsuarioRepository userRepository;
+    private final UsuarioService userService;
     private final JwtUtil jwtUtil;
     private final JdbcTemplate jdbc;
 
     @Transactional(readOnly = true)
     public List<MisionDTO> traerListaMisiones(String authHeader){
-        String token = authHeader.replace("Bearer ","");
-        String email = jwtUtil.extractEmail(token);
-        Usuario usuario = userRepository.findByEmail(email)
-                .orElseThrow(()-> new GeneralAuthException(
-                        "api/misiones/traerListaMisiones",
-                        "Usuario no existente",
-                        "Usuario: "+email
-                ));
+        Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
         List<UsuarioMision> listMissionUser = userMisionRepository.findByUsuarioId(usuario.getId());
         List<MisionDTO> listMisiones = listMissionUser.stream()
                 .map(MisionDTO::fromEntity).collect(Collectors.toList());
@@ -51,14 +45,7 @@ public class MisionService {
     public List<MisionDTO> getListMissionComplet(
             String authHeader
     ){
-        String token = authHeader.replace("Bearer ", "");
-        String email = jwtUtil.extractEmail(token);
-        Usuario usuario = userRepository.findByEmail(email)
-                .orElseThrow(()-> new GeneralAuthException(
-                        "api/misiones/getListMissionComplet",
-                        "Usuario no existente",
-                        "Usuario: "+email
-                ));
+        Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
         List<UsuarioMision> listMissionUser = userMisionRepository.findByUsuarioId(usuario.getId());
         List<MisionDTO> listMisiones = listMissionUser.stream()
                 .filter(mision -> mision.getCompletada())
@@ -71,14 +58,7 @@ public class MisionService {
     public List<MisionDTO> getListMissionIncomplet(
             String authHeader
     ){
-        String token = authHeader.replace("Bearer ", "");
-        String email = jwtUtil.extractEmail(token);
-        Usuario usuario = userRepository.findByEmail(email)
-                .orElseThrow(()-> new GeneralAuthException(
-                        "api/misiones/getListMissionComplet",
-                        "Usuario no existente",
-                        "Usuario: "+email
-                ));
+        Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
         List<UsuarioMision> listMissionUser = userMisionRepository.findByUsuarioId(usuario.getId());
         List<MisionDTO> listMisiones = listMissionUser.stream()
                 .filter(mision -> !mision.getCompletada())
@@ -86,22 +66,13 @@ public class MisionService {
         return listMisiones;
     }
 /*
+
     // Validar Mision
     @Transactional
-    public void completarMision(
+    public Boolean marcarCompletado(
             Long idMision,
             String authHeader
     ){
-        // Extraer datos necesarios
-        String token = authHeader.replace("Bearer ","");
-        String email = jwtUtil.extractEmail(token);
-        Usuario usuario = userRepository.findByEmail(email)
-                .orElseThrow(()-> new GeneralAuthException(
-                        "api/misiones/getListMissionComplet",
-                        "Usuario no existente",
-                        "Usuario: "+email
-                ));
-
         // Traer la Mision
         UsuarioMision mision = userMisionRepository.findById(idMision)
                 .orElseThrow(()-> new GeneralAuthException(
@@ -109,6 +80,9 @@ public class MisionService {
                         "Mision No Existente",
                         "Mision: "+idMision
                 ));
+
+        // Extraer datos necesarios
+        Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
 
         // Verificar que el usuario completo la mision
         if(!usuario.getId().equals(mision.getId()) && mision.getCompletada()){
@@ -120,8 +94,9 @@ public class MisionService {
         }
         // Marcar como completa
         mision.setCompletada(true);
-        userMisionRepository.save(mision);
 
+        UsuarioMision misionCompleta = userMisionRepository.save(mision);
+        return misionCompleta.getCompletada();
         // Calcular la experiencia agregada al completar la mision
     }
 

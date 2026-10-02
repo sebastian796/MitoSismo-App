@@ -15,6 +15,7 @@ import java.time.Instant;
 @Builder
 public class UsuarioCriatura {
 
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -29,8 +30,10 @@ public class UsuarioCriatura {
 
     @Builder.Default
     private Integer nivel = 1;
+
     @Builder.Default
     private Integer xpActual = 0;
+
     @Builder.Default
     private Boolean activa = true;
 

@@ -44,18 +44,20 @@ public class MisionController {
         List<MisionDTO> listMissionIncomplet = misionService.getListMissionIncomplet(authHeader);
         return ResponseEntity.ok(listMissionIncomplet);
     }
-/*
+
+    /*
     // Marcar Mision Completa
     @PostMapping("/completada")
-    ResponseEntity<Void> completarMision(
+    ResponseEntity<Boolean> completarMision(
             @RequestParam
             Long idMision,
             @RequestHeader("Authorization")
             String authHeader
     ){
-        misionService.completarMision(idMision, authHeader);
+        boolean completado = misionService.marcarCompletado(idMision, authHeader);
+        return ResponseEntity.ok(completado);
     }
-*/
 
+*/
 
 }

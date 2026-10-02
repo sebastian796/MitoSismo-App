@@ -164,4 +164,18 @@ public class UsuarioService {
                 .build();
     }
 
+    // Extraer el usuario mediante email de token
+    public Usuario extraerUsuarioEmailToken(
+         String authHeader
+    ){
+        String token = authHeader.replace("Bearer ", "");
+        String email = jwtUtil.extractEmail(token);
+        return usuarioRepository.findByEmail(email)
+                .orElseThrow(()-> new GeneralAuthException(
+                        "api/misiones/getListMissionComplet",
+                        "Usuario no existente",
+                        "Usuario: "+email
+                ));
+    }
+
 }
