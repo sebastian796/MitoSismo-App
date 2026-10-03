@@ -48,6 +48,5 @@ public class UsuarioMision {
     @Column(name = "evidencia_url", columnDefinition = "text")
     private String evidenciaUrl;
 
-
 }
 

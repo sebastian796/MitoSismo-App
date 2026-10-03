@@ -65,6 +65,18 @@ public class CriaturaService {
         return CriaturaDataDTO.fromEntity(criatura,xpData[1],xpData[2]);
     }
 
+    // Traer la Criatura con Usuario
+    @Transactional
+    public UsuarioCriatura getCriaturaUsuario(Long usuarioId){
+        return userCriaturaRepository.findByUsuarioId(usuarioId)
+                .orElseThrow(()-> new GeneralAuthException(
+                        "api/criatura/getCriaturaUsuario",
+                        "Criatura No Existente",
+                        "Usuario: "+usuarioId
+                ));
+    }
+
+
     // ReCalcular Experiencia de Criatura
     @Transactional
     public UsuarioCriatura recalcularXpCriatura(

@@ -1,24 +1,21 @@
 package com.mito.sismo.service;
 
 import com.mito.sismo.dto.entidades.MisionDTO;
-import com.mito.sismo.entity.InfoMisionDTO;
-import com.mito.sismo.entity.Usuario;
-import com.mito.sismo.entity.UsuarioMision;
+import com.mito.sismo.entity.*;
+import com.mito.sismo.entity.enums.Estado;
 import com.mito.sismo.exception.GeneralAuthException;
+import com.mito.sismo.repository.CriaturaRepository;
 import com.mito.sismo.repository.MisionRepository;
 import com.mito.sismo.repository.UsuarioMisionRepository;
 import com.mito.sismo.repository.UsuarioRepository;
 import com.mito.sismo.security.JwtUtil;
 import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import java.time.Instant;
+import java.util.List;import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
@@ -26,17 +23,18 @@ public class MisionService {
 
     private final MisionRepository misionRepository;
     private final UsuarioMisionRepository userMisionRepository;
-    private final UsuarioRepository userRepository;
     private final UsuarioService userService;
-    private final JwtUtil jwtUtil;
+    private final CriaturaService criaturaService;
     private final JdbcTemplate jdbc;
 
+    // -Traer Todas las Misiones
     @Transactional(readOnly = true)
     public List<MisionDTO> traerListaMisiones(String authHeader){
         Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
         List<UsuarioMision> listMissionUser = userMisionRepository.findByUsuarioId(usuario.getId());
         List<MisionDTO> listMisiones = listMissionUser.stream()
-                .map(MisionDTO::fromEntity).collect(Collectors.toList());
+                .map(mision -> MisionDTO.fromEntity(mision.getMision())
+                ).collect(Collectors.toList());
         return listMisiones;
     }
 
@@ -49,7 +47,8 @@ public class MisionService {
         List<UsuarioMision> listMissionUser = userMisionRepository.findByUsuarioId(usuario.getId());
         List<MisionDTO> listMisiones = listMissionUser.stream()
                 .filter(mision -> mision.getCompletada())
-                .map(MisionDTO::fromEntity).collect(Collectors.toList());
+                .map(mision -> MisionDTO.fromEntity(mision.getMision(),true))
+                .collect(Collectors.toList());
         return listMisiones;
     }
 
@@ -62,45 +61,67 @@ public class MisionService {
         List<UsuarioMision> listMissionUser = userMisionRepository.findByUsuarioId(usuario.getId());
         List<MisionDTO> listMisiones = listMissionUser.stream()
                 .filter(mision -> !mision.getCompletada())
-                .map(MisionDTO::fromEntity).collect(Collectors.toList());
+                .map(mision -> MisionDTO.fromEntity(mision.getMision(), false))
+                .collect(Collectors.toList());
         return listMisiones;
     }
-/*
+
+    // -Mostrar Mision Especifica
+    @Transactional(readOnly = true)
+    public InfoMisionDTO getMisionEspecifica(
+            Long idMisionUser
+    ){
+        UsuarioMision mission = userMisionRepository.findById(idMisionUser)
+                .orElseThrow(()-> new GeneralAuthException(
+                        "api/mision/especifica",
+                        "Mision no Existente",
+                        "Mision: "+idMisionUser
+                ));
+        return InfoMisionDTO.fromEntity(mission);
+    }
 
     // Validar Mision
     @Transactional
-    public Boolean marcarCompletado(
-            Long idMision,
+    public InfoMisionDTO marcarCompletado(
+            Long idMisionUser,
             String authHeader
     ){
         // Traer la Mision
-        UsuarioMision mision = userMisionRepository.findById(idMision)
+        UsuarioMision misionUser = userMisionRepository.findById(idMisionUser)
                 .orElseThrow(()-> new GeneralAuthException(
                         "api/misiones/validacionMision",
                         "Mision No Existente",
-                        "Mision: "+idMision
+                        "Mision: "+idMisionUser
                 ));
 
         // Extraer datos necesarios
         Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
+        UsuarioCriatura mascota = criaturaService.getCriaturaUsuario(usuario.getId());
 
-        // Verificar que el usuario completo la mision
-        if(!usuario.getId().equals(mision.getId()) && mision.getCompletada()){
+        // Verificar que sea mision del usuario
+        if(!usuario.getId().equals(misionUser.getUsuario().getId()) && misionUser.getCompletada()){
             new GeneralAuthException(
                     "api/misiones/validacionMision",
                     "Mision no Perteneciente o Completa",
                     "Usuario: "+usuario.getId()
             );
         }
-        // Marcar como completa
-        mision.setCompletada(true);
 
-        UsuarioMision misionCompleta = userMisionRepository.save(mision);
-        return misionCompleta.getCompletada();
-        // Calcular la experiencia agregada al completar la mision
+        // Recalcular Xp criatura
+        criaturaService.recalcularXpCriatura(mascota,misionUser.getMision().getXpRecompensa());
+
+        // Marcar como completa
+        misionUser.setProgreso(100);
+        misionUser.setCompletada(true);
+        misionUser.setFechaCompletada(Instant.now());
+        misionUser.setEstado(Estado.COMPLETED);
+        misionUser.setXpOtorgada(true);
+        UsuarioMision misionCompleta = userMisionRepository.save(misionUser); // Save Mision
+
+        return InfoMisionDTO.fromEntity(misionCompleta);
     }
 
-*/
+
     // Inicializar misiones cuando se registra usuario
     @Transactional
     public void inicializarMisionesParaUsuario(Long usuarioId) {
