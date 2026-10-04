@@ -59,5 +59,4 @@ public class MisionController {
         return ResponseEntity.ok(completado);
     }
 
-
 }

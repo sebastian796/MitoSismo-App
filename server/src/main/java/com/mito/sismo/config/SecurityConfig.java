@@ -28,9 +28,10 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**","/").permitAll()// endpoints de login/registro/refresh accesibles sin token
+                        .requestMatchers("/api/auth/**").permitAll()// endpoints de login/registro/refresh accesibles sin token
+                        .requestMatchers("/api/misiones/eleccion", "/api/misiones/publico").permitAll()
                         .requestMatchers("/api/misiones/**").hasAuthority("USUARIO")
-                        .anyRequest().authenticated()                // el resto requiere token válido
+                        .anyRequest().authenticated()// el resto requiere token válido
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // Registrar el JwtFilter antes del filtro de autenticación por defecto
