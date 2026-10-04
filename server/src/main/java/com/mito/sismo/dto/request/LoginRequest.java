@@ -1,5 +1,4 @@
 package com.mito.sismo.dto.request;
-
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -8,7 +7,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -16,7 +14,6 @@ public class LoginRequest {
     @NotBlank(message = "El Email es obligatorio")
     @Email(message = "Debe ser un email válido")
     private String email;
-
     @NotBlank(message = "La contraseña es obligatorio")
     @Size(min = 6, message = "La Contraseña debe tener minimo 6 caracteres")
     @Pattern(
@@ -24,5 +21,4 @@ public class LoginRequest {
             message = "La contraseña debe contener letras, números y al menos un signo especial"
     )
     private String password;
-
 }

@@ -11,11 +11,8 @@ import type {
 } from "../types/auth";
 import { ApiError } from "./apiError";
 import * as mock from "./mockAuth";
-
 export { ApiError };
-
 type Context = "login" | "register" | "other";
-
 type UsuarioResponse = {
   id: number;
   nombreUsuario: string;
@@ -25,12 +22,10 @@ type UsuarioResponse = {
   refreshToken: string;
   dataMascota?: CreatureData | null;
 };
-
 function friendlyMessage(status: number, data: any, context: Context): string {
   const text = (
     typeof data?.message === "string" ? data.message : ""
   ).toLowerCase();
-
   if (text.includes("correo registrado") || status === 409) {
     return "Este correo ya está registrado. Inicia sesión o usa otro correo.";
   }
@@ -53,7 +48,6 @@ function friendlyMessage(status: number, data: any, context: Context): string {
     return "El servidor tuvo un problema. Inténtalo más tarde.";
   return "Ocurrió un error inesperado.";
 }
-
 async function request<T>(
   path: string,
   body?: unknown,
@@ -61,7 +55,6 @@ async function request<T>(
 ): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12000);
-
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
@@ -81,7 +74,6 @@ async function request<T>(
   } finally {
     clearTimeout(timer);
   }
-
   const raw = await response.text();
   let data: any = null;
   try {
@@ -89,7 +81,6 @@ async function request<T>(
   } catch {
     data = raw;
   }
-
   if (!response.ok) {
     throw new ApiError(
       friendlyMessage(response.status, data, context),
@@ -98,7 +89,6 @@ async function request<T>(
   }
   return data as T;
 }
-
 function toSession(d: UsuarioResponse): AuthSession {
   return {
     user: {
@@ -111,7 +101,6 @@ function toSession(d: UsuarioResponse): AuthSession {
     tokens: { accessToken: d.accessToken, refreshToken: d.refreshToken },
   };
 }
-
 export async function registerUser(input: RegisterInput): Promise<AuthSession> {
   if (USE_MOCK_AUTH) return mock.registerUser(input);
   const data = await request<UsuarioResponse>(
@@ -128,7 +117,6 @@ export async function registerUser(input: RegisterInput): Promise<AuthSession> {
   );
   return toSession(data);
 }
-
 export async function loginUser(
   email: string,
   password: string,
@@ -141,17 +129,14 @@ export async function loginUser(
   );
   return toSession(data);
 }
-
 export function isTokenValid(token: string): Promise<boolean> {
   if (USE_MOCK_AUTH) return mock.isTokenValid(token);
   return request<boolean>("/auth/validacion", { token });
 }
-
 export function refreshTokens(refreshToken: string): Promise<AuthTokens> {
   if (USE_MOCK_AUTH) return mock.refreshTokens(refreshToken);
   return request<AuthTokens>("/auth/reflesh", { token: refreshToken });
 }
-
 export async function logoutRemote(userId: number): Promise<void> {
   if (USE_MOCK_AUTH) return mock.logoutRemote(userId);
   await request<void>(`/auth/invalidacion?userId=${userId}`);

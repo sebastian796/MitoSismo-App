@@ -9,7 +9,6 @@ import {
   StyleProp,
 } from 'react-native';
 import { Colors, Spacing, Typography, Radii, Shadows } from '../../constants/theme';
-
 interface ButtonProps {
   title: string;
   onPress: () => void;
@@ -21,7 +20,6 @@ interface ButtonProps {
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
 }
-
 export function Button({
   title,
   onPress,
@@ -63,7 +61,6 @@ export function Button({
         return styles.primary;
     }
   };
-
   const getTextStyle = () => {
     switch (variant) {
       case 'primary':
@@ -77,7 +74,6 @@ export function Button({
         return styles.textLight;
     }
   };
-
   return (
     <Pressable
       onPress={onPress}
@@ -112,7 +108,6 @@ export function Button({
     </Pressable>
   );
 }
-
 const styles = StyleSheet.create({
   base: {
     flexDirection: 'row',

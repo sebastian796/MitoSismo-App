@@ -6,9 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, TopBar } from "../../components";
 import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
 import { useNotificationSettings } from "../../context/NotificationSettingsContext";
-
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
-
 function SettingsRow(props: {
   icon: IconName;
   title: string;
@@ -48,11 +46,9 @@ function SettingsRow(props: {
     </Pressable>
   );
 }
-
 export default function SettingsScreen() {
   const router = useRouter();
   const { settings } = useNotificationSettings();
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <TopBar title="Configuración" showBack onBack={() => router.back()} />
@@ -92,7 +88,6 @@ export default function SettingsScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
   content: {

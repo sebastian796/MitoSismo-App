@@ -11,6 +11,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TopBar, Card, MagBadge, Button } from '../../components';
+import QuakeMapPreview from '../../components/QuakeMapPreview';
 import { fetchEarthquakeById } from '../../services/earthquakeService';
 import type { Quake } from '../../types/earthquake';
 import {
@@ -20,29 +21,23 @@ import {
   Radii,
   magInfo,
 } from '../../constants/theme';
-
 export default function QuakeDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-
   const [reported, setReported] = useState(false);
   const [quake, setQuake] = useState<Quake | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     async function loadQuake() {
       try {
         setLoading(true);
         setError(null);
-
         const data = await fetchEarthquakeById(id);
-
         if (!data) {
           setError('No se encontró información de este sismo.');
           return;
         }
-
         setQuake(data);
       } catch (err) {
         console.error('Error al cargar detalle del sismo:', err);
@@ -51,26 +46,20 @@ export default function QuakeDetailScreen() {
         setLoading(false);
       }
     }
-
     if (id) {
       loadQuake();
     }
   }, [id]);
-
   const info = quake ? magInfo(quake.mag) : null;
-
   const handleReportSafe = () => {
     setReported(true);
-
     Alert.alert(
       'Reporte Enviado',
       'Tu estado "Estoy a salvo" ha sido registrado y compartido con tus contactos.',
     );
   };
-
   const handleShareReport = async () => {
     if (!quake || !info) return;
-
     try {
       await Share.share({
         message: `⚠️ Sismo de magnitud ${quake.mag.toFixed(1)} (${info.label}) en ${quake.place}, ${quake.country}. Coordenadas: ${quake.coords}. Profundidad: ${quake.depth} km. Vía MitoSismo.`,
@@ -79,7 +68,6 @@ export default function QuakeDetailScreen() {
       Alert.alert('Error', 'No se pudo compartir el reporte.');
     }
   };
-
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -88,7 +76,6 @@ export default function QuakeDetailScreen() {
           showBack
           onBack={() => router.back()}
         />
-
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyTitle}>
             Cargando información del sismo...
@@ -97,7 +84,6 @@ export default function QuakeDetailScreen() {
       </SafeAreaView>
     );
   }
-
   if (error || !quake || !info) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -106,12 +92,10 @@ export default function QuakeDetailScreen() {
           showBack
           onBack={() => router.back()}
         />
-
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyTitle}>
             {error ?? 'No se encontró el sismo.'}
           </Text>
-
           <Button
             title="Regresar"
             variant="outline"
@@ -122,7 +106,6 @@ export default function QuakeDetailScreen() {
       </SafeAreaView>
     );
   }
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <TopBar
@@ -130,59 +113,43 @@ export default function QuakeDetailScreen() {
         showBack
         onBack={() => router.back()}
       />
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Main Magnitude Header Card */}
+        {}
         <Card style={styles.mainCard}>
           <View style={styles.badgeRow}>
             <MagBadge mag={quake.mag} showDot />
-
             <Text style={styles.countryLabel}>
               {quake.country}
             </Text>
           </View>
-
           <View style={styles.magDisplayRow}>
             <Text style={styles.magLargeNumber}>
               {quake.mag.toFixed(1)}
             </Text>
-
             <View style={styles.magTextGroup}>
               <Text style={styles.magScaleLabel}>
                 Magnitud {quake.magType}
               </Text>
-
               <Text style={styles.magSubText}>
                 Intensidad: {info.label}
               </Text>
             </View>
           </View>
-
           <Text style={styles.placeText}>
             {quake.place}
           </Text>
         </Card>
-
-        {/* Map Preview */}
+        {}
         <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
           Ubicación del Epicentro
         </Text>
         <Card style={styles.mapPreviewCard}>
-          <View style={styles.mapPreviewCanvas}>
-            <View style={[styles.mapPreviewPin, { borderColor: info.dot }]}>
-              <View style={[styles.mapPreviewDot, { backgroundColor: info.dot }]} />
-            </View>
-          </View>
-          <View style={styles.mapPreviewFooter}>
-            <Ionicons name="navigate" size={14} color={Colors.textSecondary} />
-            <Text style={styles.mapPreviewCoords}>{quake.coords}</Text>
-          </View>
+          <QuakeMapPreview quake={quake} markerColor={info.dot} />
         </Card>
-
-        {/* Technical Details Grid */}
+        {}
         <Text
           style={[
             styles.sectionTitle,
@@ -191,7 +158,6 @@ export default function QuakeDetailScreen() {
         >
           Parámetros Sísmicos
         </Text>
-
         <Card style={styles.detailsCard}>
           <View style={styles.detailRow}>
             <View style={styles.detailIconBox}>
@@ -201,20 +167,16 @@ export default function QuakeDetailScreen() {
                 color={Colors.primary}
               />
             </View>
-
             <View style={styles.detailTextCol}>
               <Text style={styles.detailLabel}>
                 Fecha y Hora Exacta
               </Text>
-
               <Text style={styles.detailValue}>
                 {quake.fullDate}
               </Text>
             </View>
           </View>
-
           <View style={styles.divider} />
-
           <View style={styles.detailRow}>
             <View style={styles.detailIconBox}>
               <Ionicons
@@ -223,20 +185,16 @@ export default function QuakeDetailScreen() {
                 color={Colors.primary}
               />
             </View>
-
             <View style={styles.detailTextCol}>
               <Text style={styles.detailLabel}>
                 Profundidad Hipocentral
               </Text>
-
               <Text style={styles.detailValue}>
                 {quake.depth} km
               </Text>
             </View>
           </View>
-
           <View style={styles.divider} />
-
           <View style={styles.detailRow}>
             <View style={styles.detailIconBox}>
               <Ionicons
@@ -245,20 +203,17 @@ export default function QuakeDetailScreen() {
                 color={Colors.primary}
               />
             </View>
-
             <View style={styles.detailTextCol}>
               <Text style={styles.detailLabel}>
                 Coordenadas del Epicentro
               </Text>
-
               <Text style={styles.detailValue}>
                 {quake.coords}
               </Text>
             </View>
           </View>
         </Card>
-
-        {/* Safety Report Action */}
+        {}
         <Text
           style={[
             styles.sectionTitle,
@@ -267,16 +222,13 @@ export default function QuakeDetailScreen() {
         >
           Tu Estado de Seguridad
         </Text>
-
         <Card style={styles.reportCard}>
           <Text style={styles.reportTitle}>
             ¿Sentiste este sismo?
           </Text>
-
           <Text style={styles.reportSub}>
             Informa a tu familia y comunidad que te encuentras a salvo.
           </Text>
-
           <Button
             title={
               reported
@@ -295,8 +247,7 @@ export default function QuakeDetailScreen() {
             style={styles.shareButton}
           />
         </Card>
-
-        {/* Back button */}
+        {}
         <Button
           title="Regresar a la lista"
           variant="outline"
@@ -307,7 +258,6 @@ export default function QuakeDetailScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,

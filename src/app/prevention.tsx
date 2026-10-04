@@ -6,11 +6,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { TopBar, Card, Button } from '../components';
 import { emergencyContacts } from '../constants/data';
 import { Colors, Spacing, Typography, Radii } from '../constants/theme';
-
 export default function PreventionScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'antes' | 'durante' | 'despues'>('durante');
-
   const kitItems = [
     { title: 'Agua embotellada (2L por persona)', checked: true },
     { title: 'Alimentos no perecibles (latas, barras)', checked: true },
@@ -19,7 +17,6 @@ export default function PreventionScreen() {
     { title: 'Radio a pilas y silbato de auxilio', checked: false },
     { title: 'Copia de documentos de identidad', checked: false },
   ];
-
   const tips = {
     antes: [
       'Ubica y señaliza las zonas seguras internas y externas de tu casa o trabajo.',
@@ -40,20 +37,17 @@ export default function PreventionScreen() {
       'Mantente informado únicamente por canales oficiales (INDECI, IGP).',
     ],
   };
-
   const handleCall = (number: string) => {
     Linking.openURL(`tel:${number}`);
   };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <TopBar title="Guía de Prevención" showBack onBack={() => router.back()} />
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Phase Selector Tabs */}
+        {}
         <View style={styles.phaseTabs}>
           {(['antes', 'durante', 'despues'] as const).map((phase) => {
             const active = activeTab === phase;
@@ -71,8 +65,7 @@ export default function PreventionScreen() {
             );
           })}
         </View>
-
-        {/* Phase Tips Card */}
+        {}
         <Card style={styles.tipsCard}>
           <View style={styles.tipsHeader}>
             <Ionicons
@@ -94,7 +87,6 @@ export default function PreventionScreen() {
                 : 'Recuperación y Cuidado'}
             </Text>
           </View>
-
           {tips[activeTab].map((tip, idx) => (
             <View key={idx} style={styles.tipItem}>
               <View style={styles.tipNumber}>
@@ -104,12 +96,10 @@ export default function PreventionScreen() {
             </View>
           ))}
         </Card>
-
-        {/* Emergency Backpack Kit */}
+        {}
         <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
           Mochila de Emergencia (Kit Esencial)
         </Text>
-
         <Card style={styles.kitCard}>
           {kitItems.map((item, index) => (
             <View key={index} style={styles.kitRow}>
@@ -129,12 +119,10 @@ export default function PreventionScreen() {
             </View>
           ))}
         </Card>
-
-        {/* Fast Emergency Numbers */}
+        {}
         <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
           Líneas de Emergencia Directas
         </Text>
-
         <View style={styles.contactsGrid}>
           {emergencyContacts.map((contact, index) => (
             <Pressable
@@ -153,8 +141,7 @@ export default function PreventionScreen() {
             </Pressable>
           ))}
         </View>
-
-        {/* Back Button */}
+        {}
         <Button
           title="Regresar"
           variant="outline"
@@ -165,7 +152,6 @@ export default function PreventionScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,

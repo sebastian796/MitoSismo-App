@@ -1,11 +1,9 @@
 package com.mito.sismo.dto.entidades;
-
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -18,7 +16,6 @@ import lombok.NoArgsConstructor;
         "colorFondo",
 })
 public class InsigniaDTO {
-
     private Integer id;
     private String nombre;
     private String descripcion;

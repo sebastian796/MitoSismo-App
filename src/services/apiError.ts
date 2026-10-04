@@ -1,5 +1,5 @@
 export class ApiError extends Error {
-  status: number; // 0 = sin conexión / timeout
+  status: number;
   constructor(message: string, status: number) {
     super(message);
     this.name = "ApiError";

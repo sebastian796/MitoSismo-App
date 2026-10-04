@@ -4,7 +4,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Colors } from "../constants/theme";
 import { AuthProvider } from "../context/AuthContext";
 import { NotificationSettingsProvider } from "../context/NotificationSettingsContext";
-
 export default function RootLayout() {
   return (
     <SafeAreaProvider>

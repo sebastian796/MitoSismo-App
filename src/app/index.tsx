@@ -17,13 +17,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Logo } from "../components";
 import { Colors, Spacing, Typography } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
-
 export default function SplashScreen() {
   const router = useRouter();
   const { loading, isAuthenticated } = useAuth();
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(20);
-
   useEffect(() => {
     opacity.value = withTiming(1, {
       duration: 700,
@@ -34,16 +32,13 @@ export default function SplashScreen() {
       easing: Easing.out(Easing.ease),
     });
   }, []);
-
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ translateY: translateY.value }],
   }));
-
   if (!loading && isAuthenticated) {
     return <Redirect href="/(tabs)" />;
   }
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -54,7 +49,6 @@ export default function SplashScreen() {
             Alerta, prevención y sabiduría ancestral ante sismos
           </Text>
         </Animated.View>
-
         <View style={styles.actions}>
           {loading ? (
             <ActivityIndicator size="large" color={Colors.accent} />
@@ -86,7 +80,6 @@ export default function SplashScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
   container: {

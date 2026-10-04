@@ -1,15 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { magInfo, Radii } from '../../constants/theme';
-
 interface MagBadgeProps {
   mag: number;
   showDot?: boolean;
 }
-
 export function MagBadge({ mag, showDot = false }: MagBadgeProps) {
   const info = magInfo(mag);
-
   return (
     <View style={[styles.badge, { backgroundColor: info.bg }]}>
       {showDot && <View style={[styles.dot, { backgroundColor: info.dot }]} />}
@@ -17,7 +14,6 @@ export function MagBadge({ mag, showDot = false }: MagBadgeProps) {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',

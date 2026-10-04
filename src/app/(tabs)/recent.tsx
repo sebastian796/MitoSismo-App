@@ -14,18 +14,13 @@ import { TopBar, QuakeCard } from '../../components';
 import { fetchRecentEarthquakes } from '../../services/earthquakeService';
 import type { Quake } from '../../types/earthquake';
 import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
-
 export default function RecentScreen() {
   const router = useRouter();
-
-  // Estados para búsqueda, filtros, datos y estados de carga.
   const [search, setSearch] = useState('');
   const [countryFilter, setCountryFilter] = useState('Todos');
   const [quakes, setQuakes] = useState<Quake[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Países disponibles para filtrar los sismos.
   const countries = [
     'Todos',
     'Perú',
@@ -35,19 +30,15 @@ export default function RecentScreen() {
     'México',
     'Internacional',
   ];
-
-  // Carga los sismos cada vez que cambia el país seleccionado.
   useEffect(() => {
     async function loadEarthquakes() {
       try {
         setLoading(true);
         setError(null);
-
         const data =
           countryFilter === 'Todos'
             ? await fetchRecentEarthquakes(20)
             : await fetchRecentEarthquakes(20, countryFilter);
-
         setQuakes(data);
       } catch (err) {
         console.error('Error al cargar sismos:', err);
@@ -56,45 +47,34 @@ export default function RecentScreen() {
         setLoading(false);
       }
     }
-
     loadEarthquakes();
   }, [countryFilter]);
-
-  // Filtra los sismos según el texto ingresado.
   const filteredQuakes = quakes.filter((q) => {
     const matchesSearch =
       q.place.toLowerCase().includes(search.toLowerCase()) ||
       q.country.toLowerCase().includes(search.toLowerCase());
-
     return matchesSearch;
   });
-
-  // Renderiza cada sismo utilizando el componente QuakeCard.
   const renderQuakeItem = ({ item }: { item: Quake }) => (
     <QuakeCard
       quake={item}
       onPress={() => router.push(`/quake/${item.id}`)}
     />
   );
-
-  // Muestra un estado de carga mientras se consultan los datos.
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <TopBar title="Sismos Recientes" />
-
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyTitle}>Cargando sismos...</Text>
         </View>
       </SafeAreaView>
     );
   }
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <TopBar title="Sismos Recientes" />
-
-      {/* Mensaje mostrado cuando ocurre un error en la consulta. */}
+      {}
       {error && (
         <View style={styles.emptyContainer}>
           <Ionicons
@@ -108,8 +88,7 @@ export default function RecentScreen() {
           </Text>
         </View>
       )}
-
-      {/* Barra de búsqueda por ciudad o país. */}
+      {}
       <View style={styles.searchContainer}>
         <Ionicons
           name="search"
@@ -117,7 +96,6 @@ export default function RecentScreen() {
           color={Colors.textMuted}
           style={styles.searchIcon}
         />
-
         <TextInput
           style={styles.searchInput}
           placeholder="Buscar por ciudad o país..."
@@ -125,7 +103,6 @@ export default function RecentScreen() {
           value={search}
           onChangeText={setSearch}
         />
-
         {search.length > 0 && (
           <Pressable onPress={() => setSearch('')}>
             <Ionicons
@@ -136,7 +113,6 @@ export default function RecentScreen() {
           </Pressable>
         )}
       </View>
-
       {/* Filtros para seleccionar un país. */}
       <View style={styles.chipsContainer}>
         <FlatList
@@ -147,7 +123,6 @@ export default function RecentScreen() {
           contentContainerStyle={styles.chipsList}
           renderItem={({ item }) => {
             const active = countryFilter === item;
-
             return (
               <Pressable
                 style={[styles.chip, active && styles.chipActive]}
@@ -166,7 +141,6 @@ export default function RecentScreen() {
           }}
         />
       </View>
-
       {/* Lista de sismos encontrados. */}
       <FlatList
         data={filteredQuakes}
@@ -194,13 +168,11 @@ export default function RecentScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -212,26 +184,21 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     height: 44,
   },
-
   searchIcon: {
     marginRight: Spacing.sm,
   },
-
   searchInput: {
     flex: 1,
     fontSize: 14,
     color: Colors.textPrimary,
   },
-
   chipsContainer: {
     marginVertical: Spacing.md,
   },
-
   chipsList: {
     paddingHorizontal: Spacing.lg,
     gap: Spacing.sm,
   },
-
   chip: {
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
@@ -240,39 +207,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-
   chipActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-
   chipText: {
     ...Typography.bodySmall,
     fontWeight: '600',
     color: Colors.textSecondary,
   },
-
   chipTextActive: {
     color: Colors.white,
   },
-
   listContent: {
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xxl,
   },
-
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.xxxl,
   },
-
   emptyTitle: {
     ...Typography.titleSmall,
     color: Colors.textSecondary,
     marginTop: Spacing.md,
   },
-
   emptySub: {
     ...Typography.bodyMedium,
     marginTop: 4,

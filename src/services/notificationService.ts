@@ -2,12 +2,7 @@ import Constants, { ExecutionEnvironment } from "expo-constants";
 import { Alert, Platform } from "react-native";
 import type { Quake } from "../types/earthquake";
 import type { NotificationSettings } from "../types/notifications";
-
-// 'native'  -> development build / app instalada: notificaciones reales.
-// 'expo-go' -> Expo Go en Android: no admite expo-notifications (SDK 53+).
-// 'web'     -> navegador: usa la API Notification del navegador.
 export type NotificationMode = "native" | "expo-go" | "web";
-
 export const notificationMode: NotificationMode =
   Platform.OS === "web"
     ? "web"
@@ -15,15 +10,10 @@ export const notificationMode: NotificationMode =
         Constants.executionEnvironment === ExecutionEnvironment.StoreClient
       ? "expo-go"
       : "native";
-
 export const CHANNEL_SOUND = "alertas-sonoras";
 export const CHANNEL_SILENT = "alertas-silenciosas";
-
 type NotificationsModule = typeof import("expo-notifications");
 let cachedModule: NotificationsModule | null = null;
-
-// Carga expo-notifications SOLO cuando se necesita y solo en modo nativo.
-// Así en Expo Go y en web nunca se importa y no rompe la app.
 function getNotifications(): NotificationsModule | null {
   if (notificationMode !== "native") return null;
   if (!cachedModule) {
@@ -39,11 +29,9 @@ function getNotifications(): NotificationsModule | null {
   }
   return cachedModule;
 }
-
 function webApi(): any {
   return (globalThis as any).Notification ?? null;
 }
-
 const TIPS = [
   "Identifica hoy las zonas seguras de tu casa: columnas, muros fuertes y bajo mesas resistentes.",
   "Revisa tu mochila de emergencia: agua, linterna, radio, botiquín y documentos.",
@@ -53,7 +41,6 @@ const TIPS = [
   "Después de un sismo, revisa fugas de gas o cables dañados antes de volver a entrar.",
   "Practica un simulacro con tu familia: ¿cuánto tardan en llegar a la zona segura?",
 ];
-
 export async function setupNotificationChannels() {
   const N = getNotifications();
   if (!N || Platform.OS !== "android") return;
@@ -70,7 +57,6 @@ export async function setupNotificationChannels() {
     sound: null,
   });
 }
-
 export async function requestNotificationPermission(): Promise<boolean> {
   if (notificationMode === "web") {
     const W = webApi();
@@ -79,8 +65,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
     if (W.permission === "denied") return false;
     return (await W.requestPermission()) === "granted";
   }
-  if (notificationMode === "expo-go") return true; // simulado con avisos en la app
-
+  if (notificationMode === "expo-go") return true;
   const N = getNotifications();
   if (!N) return false;
   await setupNotificationChannels();
@@ -89,15 +74,11 @@ export async function requestNotificationPermission(): Promise<boolean> {
   const req = await N.requestPermissionsAsync();
   return req.granted;
 }
-
-// Programa consejos semanales y recordatorio diario (solo modo nativo).
 export async function syncScheduledReminders(s: NotificationSettings) {
   const N = getNotifications();
   if (!N) return;
-
   await N.cancelAllScheduledNotificationsAsync();
   if (!s.enabled) return;
-
   if (s.tips) {
     for (let i = 0; i < 7; i++) {
       await N.scheduleNotificationAsync({
@@ -109,7 +90,7 @@ export async function syncScheduledReminders(s: NotificationSettings) {
         },
         trigger: {
           type: N.SchedulableTriggerInputTypes.WEEKLY,
-          weekday: i + 1, // 1 = domingo ... 7 = sábado
+          weekday: i + 1,
           hour: s.tipsHour,
           minute: 0,
           channelId: CHANNEL_SILENT,
@@ -117,7 +98,6 @@ export async function syncScheduledReminders(s: NotificationSettings) {
       });
     }
   }
-
   if (s.missions) {
     await N.scheduleNotificationAsync({
       identifier: "recordatorio-misiones",
@@ -135,8 +115,6 @@ export async function syncScheduledReminders(s: NotificationSettings) {
     });
   }
 }
-
-// Entrega una notificación ahora, según el entorno.
 async function deliver(
   title: string,
   body: string,
@@ -161,7 +139,6 @@ async function deliver(
   });
   return true;
 }
-
 export async function sendQuakeNotification(quake: Quake, sound: boolean) {
   await deliver(
     `Sismo M ${quake.mag.toFixed(1)} · ${quake.country}`,
@@ -170,7 +147,6 @@ export async function sendQuakeNotification(quake: Quake, sound: boolean) {
     { quakeId: quake.id },
   );
 }
-
 export async function sendTestNotification(sound: boolean): Promise<boolean> {
   try {
     return await deliver(
@@ -183,8 +159,6 @@ export async function sendTestNotification(sound: boolean): Promise<boolean> {
     return false;
   }
 }
-
-// Escucha cuando el usuario toca una notificación de sismo (solo nativo).
 export function subscribeToNotificationTaps(
   onQuake: (quakeId: string) => void,
 ): () => void {

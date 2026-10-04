@@ -3,11 +3,8 @@ import type {
   Creature,
   EmergencyContact,
 } from '../types';
-
 import type { Quake } from '../types/earthquake';
-
 export const quakes: Quake[] = [
-
   {
     id: '1',
     mag: 5.2,
@@ -87,7 +84,6 @@ export const quakes: Quake[] = [
     fullDate: '5 sep 2026, 21:38:51 p.m. (UTC-6)',
   },
 ];
-
 export const missions: Mission[] = [
   {
     id: 1,
@@ -135,7 +131,6 @@ export const missions: Mission[] = [
     icon: 'people',
   },
 ];
-
 export const ignisCreature: Creature = {
   id: 'ignis-01',
   name: 'Ignis',
@@ -152,7 +147,6 @@ export const ignisCreature: Creature = {
     { name: 'Rugido de Alerta', description: 'Notificaciones prioritarias sonoras en eventos de magnitud > 5.5.', unlocked: false },
   ],
 };
-
 export const emergencyContacts: EmergencyContact[] = [
   { name: 'Bomberos del Perú', number: '116', description: 'Emergencias médicas, rescates e incendios.', icon: 'flame' },
   { name: 'Policía Nacional', number: '105', description: 'Seguridad ciudadana y auxilio inmediato.', icon: 'shield-checkmark' },

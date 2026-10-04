@@ -10,7 +10,6 @@ export type CreatureData = {
   xpActual: number;
   activa: boolean;
 };
-
 export type AuthUser = {
   id: number;
   nombreUsuario: string;
@@ -18,10 +17,8 @@ export type AuthUser = {
   rol: string;
   dataMascota: CreatureData | null;
 };
-
 export type AuthTokens = { accessToken: string; refreshToken: string };
 export type AuthSession = { user: AuthUser; tokens: AuthTokens };
-
 export type RegisterInput = {
   nombreUsuario: string;
   email: string;

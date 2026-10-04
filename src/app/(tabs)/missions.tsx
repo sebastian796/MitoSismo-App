@@ -6,7 +6,6 @@ import { TopBar, Card, Button } from '../../components';
 import { missions as initialMissions } from '../../constants/data';
 import { Mission } from '../../types';
 import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
-
 export default function MissionsScreen() {
   const [missionsList, setMissionsList] = useState<Mission[]>(initialMissions);
   const totalXp = missionsList.reduce(
@@ -15,7 +14,6 @@ export default function MissionsScreen() {
   );
   const nextLevelThreshold = 1000;
   const progressPercent = Math.min(100, Math.round((totalXp / nextLevelThreshold) * 100));
-
   const toggleMission = (id: number) => {
     setMissionsList((prev) =>
       prev.map((m) =>
@@ -23,16 +21,14 @@ export default function MissionsScreen() {
       )
     );
   };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <TopBar title="Misiones de Prevención" />
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* XP & Level Hero Card */}
+        {}
         <Card style={styles.xpCard}>
           <View style={styles.xpHeader}>
             <View>
@@ -44,32 +40,28 @@ export default function MissionsScreen() {
               <Text style={styles.xpText}>{totalXp} XP</Text>
             </View>
           </View>
-
-          {/* Progress Bar */}
+          {}
           <View style={styles.progressBarBg}>
             <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
           </View>
-
           <View style={styles.progressLabels}>
             <Text style={styles.progressSub}>{totalXp} / {nextLevelThreshold} XP para Nivel 4</Text>
             <Text style={styles.progressPercent}>{progressPercent}%</Text>
           </View>
         </Card>
-
-        {/* Missions Section Title */}
+        {}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Misiones Disponibles</Text>
           <Text style={styles.sectionCount}>
             {missionsList.filter((m) => m.completed).length}/{missionsList.length} Completadas
           </Text>
         </View>
-
-        {/* Missions Checklist */}
+        {}
         {missionsList.map((m) => (
           <Pressable key={m.id} onPress={() => toggleMission(m.id)}>
             <Card style={[styles.missionCard, m.completed && styles.missionCompletedCard]}>
               <View style={styles.missionRow}>
-                {/* Checkbox Icon */}
+                {}
                 <View
                   style={[
                     styles.checkbox,
@@ -80,8 +72,7 @@ export default function MissionsScreen() {
                     <Ionicons name="checkmark" size={18} color={Colors.white} />
                   )}
                 </View>
-
-                {/* Info */}
+                {}
                 <View style={styles.missionInfo}>
                   <View style={styles.titleRow}>
                     <Text
@@ -94,13 +85,11 @@ export default function MissionsScreen() {
                     </Text>
                   </View>
                   <Text style={styles.missionDesc}>{m.description}</Text>
-
-                  {/* Individual Mission Progress */}
+                  {}
                   <View style={styles.itemProgressBg}>
                     <View style={[styles.itemProgressFill, { width: `${m.progress}%` }]} />
                   </View>
-
-                  {/* XP Reward */}
+                  {}
                   <View style={styles.rewardRow}>
                     <View style={styles.rewardPill}>
                       <Ionicons name="star" size={12} color={Colors.accent} />
@@ -121,7 +110,6 @@ export default function MissionsScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,

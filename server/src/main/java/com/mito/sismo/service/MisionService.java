@@ -1,5 +1,4 @@
 package com.mito.sismo.service;
-
 import com.mito.sismo.dto.entidades.MisionDTO;
 import com.mito.sismo.entity.InfoMisionDTO;
 import com.mito.sismo.entity.Usuario;
@@ -14,22 +13,18 @@ import lombok.NoArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
 @Service
 @AllArgsConstructor
 public class MisionService {
-
     private final MisionRepository misionRepository;
     private final UsuarioMisionRepository userMisionRepository;
     private final UsuarioRepository userRepository;
     private final JwtUtil jwtUtil;
     private final JdbcTemplate jdbc;
-
     @Transactional(readOnly = true)
     public List<MisionDTO> traerListaMisiones(String authHeader){
         String token = authHeader.replace("Bearer ","");
@@ -45,8 +40,6 @@ public class MisionService {
                 .map(MisionDTO::fromEntity).collect(Collectors.toList());
         return listMisiones;
     }
-
-    // Lista Misiones Completadas
     @Transactional(readOnly = true)
     public List<MisionDTO> getListMissionComplet(
             String authHeader
@@ -65,8 +58,6 @@ public class MisionService {
                 .map(MisionDTO::fromEntity).collect(Collectors.toList());
         return listMisiones;
     }
-
-    // Listar Misiones Imcompletas
     @Transactional(readOnly = true)
     public List<MisionDTO> getListMissionIncomplet(
             String authHeader
@@ -85,48 +76,6 @@ public class MisionService {
                 .map(MisionDTO::fromEntity).collect(Collectors.toList());
         return listMisiones;
     }
-/*
-    // Validar Mision
-    @Transactional
-    public void completarMision(
-            Long idMision,
-            String authHeader
-    ){
-        // Extraer datos necesarios
-        String token = authHeader.replace("Bearer ","");
-        String email = jwtUtil.extractEmail(token);
-        Usuario usuario = userRepository.findByEmail(email)
-                .orElseThrow(()-> new GeneralAuthException(
-                        "api/misiones/getListMissionComplet",
-                        "Usuario no existente",
-                        "Usuario: "+email
-                ));
-
-        // Traer la Mision
-        UsuarioMision mision = userMisionRepository.findById(idMision)
-                .orElseThrow(()-> new GeneralAuthException(
-                        "api/misiones/validacionMision",
-                        "Mision No Existente",
-                        "Mision: "+idMision
-                ));
-
-        // Verificar que el usuario completo la mision
-        if(!usuario.getId().equals(mision.getId()) && mision.getCompletada()){
-            new GeneralAuthException(
-                    "api/misiones/validacionMision",
-                    "Mision no Perteneciente o Completa",
-                    "Usuario: "+usuario.getId()
-            );
-        }
-        // Marcar como completa
-        mision.setCompletada(true);
-        userMisionRepository.save(mision);
-
-        // Calcular la experiencia agregada al completar la mision
-    }
-
-*/
-    // Inicializar misiones cuando se registra usuario
     @Transactional
     public void inicializarMisionesParaUsuario(Long usuarioId) {
         String sql = ""
@@ -139,8 +88,6 @@ public class MisionService {
                 + "ON CONFLICT (usuario_id, mision_id) DO NOTHING";
         jdbc.update(sql, usuarioId);
     }
-
-    // Refrescar las misiones de un usuario (desbloquear cuando todos los prerequisitos están completados)
     @Transactional
     public void reconcileUnlocksForUsuario(Long usuarioId) {
         String sql = ""
@@ -164,7 +111,4 @@ public class MisionService {
                 + "  AND um2.estado <> 'UNLOCKED'";
         jdbc.update(sql, usuarioId, usuarioId);
     }
-
-
-
 }

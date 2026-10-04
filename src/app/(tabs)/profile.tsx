@@ -5,11 +5,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, TopBar } from "../../components";
 import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
-
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <TopBar
@@ -28,12 +26,11 @@ export default function ProfileScreen() {
           </Pressable>
         }
       />
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* User Card */}
+        {}
         <Card style={styles.userCard}>
           <View style={styles.avatar}>
             <Ionicons name="person" size={36} color={Colors.white} />
@@ -45,8 +42,7 @@ export default function ProfileScreen() {
             {user ? user.email : "Inicia sesión para guardar tu progreso"}
           </Text>
         </Card>
-
-        {/* Stats Grid */}
+        {}
         <View style={styles.statsGrid}>
           <Card style={styles.statBox}>
             <Text style={styles.statNumber}>0</Text>
@@ -63,12 +59,10 @@ export default function ProfileScreen() {
             <Text style={styles.statLabel}>XP Total</Text>
           </Card>
         </View>
-
-        {/* Badges / Medals Section */}
+        {}
         <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
           Medallas e Insignias
         </Text>
-
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -81,7 +75,6 @@ export default function ProfileScreen() {
             <Text style={styles.badgeName}>Zona Segura</Text>
             <Text style={styles.badgeStatus}>Desbloqueado</Text>
           </Card>
-
           <Card style={styles.badgeCard}>
             <View style={[styles.badgeIconBox, { backgroundColor: "#FFF3E0" }]}>
               <Ionicons name="bag" size={24} color="#E65100" />
@@ -89,7 +82,6 @@ export default function ProfileScreen() {
             <Text style={styles.badgeName}>Mochila Lista</Text>
             <Text style={styles.badgeStatus}>En progreso</Text>
           </Card>
-
           <Card style={styles.badgeCard}>
             <View style={[styles.badgeIconBox, { backgroundColor: "#EDE7F6" }]}>
               <Ionicons name="flame" size={24} color="#512DA8" />
@@ -98,10 +90,8 @@ export default function ProfileScreen() {
             <Text style={styles.badgeStatus}>Desbloqueado</Text>
           </Card>
         </ScrollView>
-
-        {/* Settings Section */}
-
-        {/* Logout */}
+        {}
+        {}
         {user ? (
           <Button
             title="Cerrar Sesión"
@@ -123,7 +113,6 @@ export default function ProfileScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,

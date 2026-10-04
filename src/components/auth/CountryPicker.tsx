@@ -10,17 +10,14 @@ import {
 } from "react-native";
 import { COUNTRIES } from "../../constants/countries";
 import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
-
 type Props = {
   label: string;
   value: string;
   onChange: (value: string) => void;
 };
-
 export function CountryPicker({ label, value, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const selected = COUNTRIES.find((c) => c.value === value);
-
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
@@ -30,7 +27,6 @@ export function CountryPicker({ label, value, onChange }: Props) {
         </Text>
         <Ionicons name="chevron-down" size={18} color={Colors.textSecondary} />
       </Pressable>
-
       <Modal
         visible={open}
         transparent
@@ -75,7 +71,6 @@ export function CountryPicker({ label, value, onChange }: Props) {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: { marginBottom: Spacing.md },
   label: {

@@ -1,9 +1,7 @@
 package com.mito.sismo.entity;
-
 import com.mito.sismo.entity.enums.Pais;
 import jakarta.persistence.*;
 import lombok.*;
-
 @Entity
 @Table(name = "contactos_emergencia")
 @Getter
@@ -12,11 +10,9 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class ContactoEmergencia {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-
     private String nombre;
     private String numero;
     private String descripcion;

@@ -23,18 +23,15 @@ import {
   validatePassword,
   validateUsername,
 } from "../../utils/validation";
-
 type Errors = {
   nombreUsuario?: string;
   email?: string;
   password?: string;
   confirm?: string;
 };
-
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
-
   const [nombreUsuario, setNombreUsuario] = useState("");
   const [email, setEmail] = useState("");
   const [pais, setPais] = useState<string>(DEFAULT_COUNTRY);
@@ -44,12 +41,10 @@ export default function RegisterScreen() {
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
-
   const clear = (key: keyof Errors) => {
     setErrors((p) => ({ ...p, [key]: undefined }));
     setFormError("");
   };
-
   const handleRegister = async () => {
     setFormError("");
     const next: Errors = {
@@ -68,7 +63,6 @@ export default function RegisterScreen() {
       setFormError("La ciudad no puede superar los 100 caracteres.");
       return;
     }
-
     setLoading(true);
     try {
       await register({ nombreUsuario, email, password, pais, ciudad });
@@ -81,11 +75,9 @@ export default function RegisterScreen() {
       setLoading(false);
     }
   };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <TopBar title="Crear Cuenta" showBack onBack={() => router.back()} />
-
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
@@ -100,14 +92,12 @@ export default function RegisterScreen() {
               Prepárate, ayuda a tu comunidad y descubre los mitos protectores
             </Text>
           </View>
-
           {!!formError && (
             <View style={styles.errorBox}>
               <Ionicons name="alert-circle" size={18} color="#B71C1C" />
               <Text style={styles.errorText}>{formError}</Text>
             </View>
           )}
-
           <View style={styles.form}>
             <Input
               label="Nombre de usuario"
@@ -155,7 +145,6 @@ export default function RegisterScreen() {
               autoCapitalize="none"
               error={errors.password}
             />
-
             {password.length > 0 && (
               <View style={styles.checklist}>
                 {passwordChecks(password).map((c) => (
@@ -174,7 +163,6 @@ export default function RegisterScreen() {
                 ))}
               </View>
             )}
-
             <Input
               label="Confirmar Contraseña"
               placeholder="••••••••"
@@ -188,7 +176,6 @@ export default function RegisterScreen() {
               error={errors.confirm}
               onSubmitEditing={handleRegister}
             />
-
             <Button
               title="Registrarse"
               onPress={handleRegister}
@@ -196,7 +183,6 @@ export default function RegisterScreen() {
               loading={loading}
               style={styles.registerButton}
             />
-
             <View style={styles.footer}>
               <Text style={styles.footerText}>¿Ya tienes cuenta? </Text>
               <Pressable onPress={() => router.back()}>
@@ -209,7 +195,6 @@ export default function RegisterScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
   flex: { flex: 1 },

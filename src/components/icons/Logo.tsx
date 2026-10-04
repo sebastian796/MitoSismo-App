@@ -1,13 +1,11 @@
 import React from 'react';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Colors } from '../../constants/theme';
-
 interface LogoProps {
   size?: number;
   color?: string;
   accentColor?: string;
 }
-
 export function Logo({
   size = 72,
   color = Colors.primary,

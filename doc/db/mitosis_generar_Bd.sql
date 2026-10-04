@@ -1,6 +1,3 @@
--- =========================
--- TABLA: usuarios
--- =========================
 CREATE TABLE usuarios (
     id BIGSERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
@@ -14,10 +11,6 @@ CREATE TABLE usuarios (
 );
 CREATE INDEX idx_usuarios_email ON usuarios(email);
 CREATE INDEX idx_usuarios_rol ON usuarios(rol);
-
--- =========================
--- TABLA: configuraciones_usuario
--- =========================
 CREATE TABLE configuraciones_usuario (
     id BIGSERIAL PRIMARY KEY,
     usuario_id BIGINT UNIQUE REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -28,10 +21,6 @@ CREATE TABLE configuraciones_usuario (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_config_usuario_id ON configuraciones_usuario(usuario_id);
-
--- =========================
--- TABLA: criaturas (catálogo maestro)
--- =========================
 CREATE TABLE criaturas (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) UNIQUE,
@@ -42,10 +31,6 @@ CREATE TABLE criaturas (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_criaturas_nombre ON criaturas(nombre);
-
--- =========================
--- TABLA: usuario_criaturas
--- =========================
 CREATE TABLE usuario_criaturas (
     id BIGSERIAL PRIMARY KEY,
     usuario_id BIGINT UNIQUE REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -57,10 +42,6 @@ CREATE TABLE usuario_criaturas (
 );
 CREATE INDEX idx_usuario_criaturas_usuario ON usuario_criaturas(usuario_id);
 CREATE INDEX idx_usuario_criaturas_criatura ON usuario_criaturas(criatura_id);
-
--- =========================
--- TABLA: misiones
--- =========================
 CREATE TABLE misiones (
     id SERIAL PRIMARY KEY,
     titulo VARCHAR(150),
@@ -70,10 +51,6 @@ CREATE TABLE misiones (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_misiones_titulo ON misiones(titulo);
-
--- =========================
--- TABLA: usuario_misiones
--- =========================
 CREATE TABLE usuario_misiones (
     id BIGSERIAL PRIMARY KEY,
     usuario_id BIGINT REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -85,10 +62,6 @@ CREATE TABLE usuario_misiones (
 );
 CREATE INDEX idx_usuario_misiones_usuario ON usuario_misiones(usuario_id);
 CREATE INDEX idx_usuario_misiones_mision ON usuario_misiones(mision_id);
-
--- =========================
--- TABLA: insignias
--- =========================
 CREATE TABLE insignias (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) UNIQUE,
@@ -98,10 +71,6 @@ CREATE TABLE insignias (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_insignias_nombre ON insignias(nombre);
-
--- =========================
--- TABLA: usuario_insignias
--- =========================
 CREATE TABLE usuario_insignias (
     id BIGSERIAL PRIMARY KEY,
     usuario_id BIGINT REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -112,10 +81,6 @@ CREATE TABLE usuario_insignias (
 );
 CREATE INDEX idx_usuario_insignias_usuario ON usuario_insignias(usuario_id);
 CREATE INDEX idx_usuario_insignias_insignia ON usuario_insignias(insignia_id);
-
--- =========================
--- TABLA: reportes_seguridad
--- =========================
 CREATE TABLE reportes_seguridad (
     id BIGSERIAL PRIMARY KEY,
     usuario_id BIGINT REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -130,10 +95,6 @@ CREATE TABLE reportes_seguridad (
 );
 CREATE INDEX idx_reportes_usuario ON reportes_seguridad(usuario_id);
 CREATE INDEX idx_reportes_estado ON reportes_seguridad(estado_seguridad);
-
--- =========================
--- TABLA: items_mochila (catálogo maestro)
--- =========================
 CREATE TABLE items_mochila (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(150),
@@ -142,10 +103,6 @@ CREATE TABLE items_mochila (
     orden INTEGER DEFAULT 0
 );
 CREATE INDEX idx_items_mochila_nombre ON items_mochila(nombre);
-
--- =========================
--- TABLA: usuario_mochila_items
--- =========================
 CREATE TABLE usuario_mochila_items (
     id BIGSERIAL PRIMARY KEY,
     usuario_id BIGINT REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -156,10 +113,6 @@ CREATE TABLE usuario_mochila_items (
 );
 CREATE INDEX idx_usuario_mochila_usuario ON usuario_mochila_items(usuario_id);
 CREATE INDEX idx_usuario_mochila_item ON usuario_mochila_items(item_mochila_id);
-
--- =========================
--- TABLA: fases_prevencion (catálogo maestro)
--- =========================
 CREATE TABLE fases_prevencion (
     id SERIAL PRIMARY KEY,
     clave VARCHAR(20) UNIQUE,
@@ -167,10 +120,6 @@ CREATE TABLE fases_prevencion (
     icono VARCHAR(50)
 );
 CREATE INDEX idx_fases_prevencion_clave ON fases_prevencion(clave);
-
--- =========================
--- TABLA: consejos_prevencion
--- =========================
 CREATE TABLE consejos_prevencion (
     id SERIAL PRIMARY KEY,
     fase_id INTEGER REFERENCES fases_prevencion(id) ON DELETE RESTRICT,
@@ -178,10 +127,6 @@ CREATE TABLE consejos_prevencion (
     orden INTEGER DEFAULT 0
 );
 CREATE INDEX idx_consejos_fase ON consejos_prevencion(fase_id);
-
--- =========================
--- TABLA: contactos_emergencia (catálogo maestro)
--- =========================
 CREATE TABLE contactos_emergencia (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100),

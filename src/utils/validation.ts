@@ -1,8 +1,6 @@
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
 export const PASSWORD_REGEX =
   /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
-
 export function validateEmail(value: string): string | undefined {
   const v = value.trim();
   if (!v) return "Ingresa tu correo electrónico.";
@@ -10,7 +8,6 @@ export function validateEmail(value: string): string | undefined {
     return "Ingresa un correo válido. Ejemplo: usuario@gmail.com";
   return undefined;
 }
-
 export function validateUsername(value: string): string | undefined {
   const v = value.trim();
   if (!v) return "Ingresa un nombre de usuario.";
@@ -18,14 +15,12 @@ export function validateUsername(value: string): string | undefined {
     return "Debe tener entre 3 y 20 caracteres.";
   return undefined;
 }
-
 export function validatePassword(value: string): string | undefined {
   if (!value) return "Ingresa una contraseña.";
   if (!PASSWORD_REGEX.test(value))
     return "La contraseña no cumple los requisitos.";
   return undefined;
 }
-
 export function passwordChecks(p: string) {
   return [
     { label: "Mínimo 6 caracteres", ok: p.length >= 6 },

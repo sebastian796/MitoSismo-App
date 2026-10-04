@@ -13,11 +13,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { TopBar, Card, Ignis, Button } from '../components';
 import { ignisCreature } from '../constants/data';
 import { Colors, Spacing, Typography, Radii } from '../constants/theme';
-
 export default function CreatureScreen() {
   const router = useRouter();
   const scale = useSharedValue(1);
-
   useEffect(() => {
     scale.value = withRepeat(
       withTiming(1.06, { duration: 1400, easing: Easing.inOut(Easing.sin) }),
@@ -25,27 +23,23 @@ export default function CreatureScreen() {
       true
     );
   }, []);
-
   const breatheStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <TopBar title="Mascota Guardiana" showBack onBack={() => router.back()} />
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Creature Showcase */}
+        {}
         <Card style={styles.heroCard}>
           <Animated.View style={[styles.avatarContainer, breatheStyle]}>
             <Ignis size={100} />
           </Animated.View>
           <Text style={styles.creatureName}>{ignisCreature.name}</Text>
           <Text style={styles.creatureTitle}>{ignisCreature.title}</Text>
-          
           <View style={styles.tagRow}>
             <View style={styles.tagPill}>
               <Text style={styles.tagText}>Elemento: {ignisCreature.element}</Text>
@@ -54,15 +48,12 @@ export default function CreatureScreen() {
               <Text style={[styles.tagText, { color: Colors.primary }]}>Nivel {ignisCreature.level}</Text>
             </View>
           </View>
-
           <Text style={styles.creatureBio}>{ignisCreature.description}</Text>
         </Card>
-
-        {/* Mythology Lore Section */}
+        {}
         <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
           Sabiduría Ancestral Andina
         </Text>
-
         <Card style={styles.loreCard}>
           <View style={styles.loreHeader}>
             <Ionicons name="sparkles" size={18} color={Colors.gold} />
@@ -70,12 +61,10 @@ export default function CreatureScreen() {
           </View>
           <Text style={styles.loreText}>{ignisCreature.mythLore}</Text>
         </Card>
-
-        {/* Abilities List */}
+        {}
         <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
           Habilidades de Alerta
         </Text>
-
         {ignisCreature.abilities.map((ability, index) => (
           <Card key={index} style={styles.abilityCard}>
             <View style={styles.abilityRow}>
@@ -91,7 +80,6 @@ export default function CreatureScreen() {
                   color={ability.unlocked ? Colors.white : Colors.textMuted}
                 />
               </View>
-
               <View style={styles.abilityInfo}>
                 <View style={styles.abilityHeaderRow}>
                   <Text style={styles.abilityName}>{ability.name}</Text>
@@ -109,8 +97,7 @@ export default function CreatureScreen() {
             </View>
           </Card>
         ))}
-
-        {/* Back Button */}
+        {}
         <Button
           title="Regresar al Inicio"
           onPress={() => router.back()}
@@ -120,7 +107,6 @@ export default function CreatureScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,

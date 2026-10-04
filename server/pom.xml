@@ -6,7 +6,7 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.1.1</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>com.mito</groupId>
 	<artifactId>sismo</artifactId>
@@ -55,7 +55,6 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
@@ -100,13 +99,9 @@
 		<dependency>
 			<groupId>com.nimbusds</groupId>
 			<artifactId>nimbus-jose-jwt</artifactId>
-			<version>9.37.3</version> <!-- versión estable y actual -->
+			<version>9.37.3</version>
 		</dependency>
-
-
-
 	</dependencies>
-
 	<build>
 		<plugins>
 			<plugin>
@@ -151,5 +146,4 @@
 			</plugin>
 		</plugins>
 	</build>
-
 </project>

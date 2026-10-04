@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
-
 interface TopBarProps {
   title: string;
   showBack?: boolean;
@@ -11,7 +10,6 @@ interface TopBarProps {
   dark?: boolean;
   rightElement?: ReactNode;
 }
-
 export function TopBar({
   title,
   showBack = false,
@@ -20,7 +18,6 @@ export function TopBar({
   rightElement,
 }: TopBarProps) {
   const router = useRouter();
-
   const handleBack = () => {
     if (onBack) {
       onBack();
@@ -28,10 +25,8 @@ export function TopBar({
       router.back();
     }
   };
-
   const textColor = dark ? Colors.white : Colors.textPrimary;
   const backBgColor = dark ? 'rgba(255,255,255,0.15)' : Colors.surfaceAlt;
-
   return (
     <View style={[styles.container, dark && styles.darkContainer]}>
       {showBack && (
@@ -46,11 +41,9 @@ export function TopBar({
           <Ionicons name="chevron-back" size={20} color={textColor} />
         </Pressable>
       )}
-      
       <Text style={[styles.title, { color: textColor }]} numberOfLines={1}>
         {title}
       </Text>
-
       {rightElement ? (
         <View style={styles.right}>{rightElement}</View>
       ) : (
@@ -59,7 +52,6 @@ export function TopBar({
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     height: 52,

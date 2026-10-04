@@ -5,13 +5,10 @@ import type { Quake } from '../../types/earthquake';
 import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
 import { Card } from '../ui/Card';
 import { MagBadge } from './MagBadge';
-
 interface QuakeCardProps {
   quake: Quake;
   onPress: () => void;
 }
-
-/** Reusable summary card for an earthquake in vertical lists. */
 export function QuakeCard({ quake, onPress }: QuakeCardProps) {
   return (
     <Pressable onPress={onPress} style={styles.pressable}>
@@ -30,9 +27,7 @@ export function QuakeCard({ quake, onPress }: QuakeCardProps) {
             </Text>
           </View>
         </View>
-
         <View style={styles.divider} />
-
         <View style={styles.footer}>
           <View style={styles.footerItem}>
             <Ionicons name="time-outline" size={13} color={Colors.textSecondary} />
@@ -51,7 +46,6 @@ export function QuakeCard({ quake, onPress }: QuakeCardProps) {
     </Pressable>
   );
 }
-
 const styles = StyleSheet.create({
   pressable: {
     marginBottom: Spacing.md,

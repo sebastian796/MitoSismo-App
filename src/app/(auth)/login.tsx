@@ -16,7 +16,6 @@ import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { ApiError } from "../../services/authService";
 import { validateEmail } from "../../utils/validation";
-
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuth();
@@ -27,7 +26,6 @@ export default function LoginScreen() {
   );
   const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
-
   const handleLogin = async () => {
     setFormError("");
     const next = {
@@ -36,7 +34,6 @@ export default function LoginScreen() {
     };
     setErrors(next);
     if (next.email || next.password) return;
-
     setLoading(true);
     try {
       await login(email, password);
@@ -49,7 +46,6 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <TopBar
@@ -57,7 +53,6 @@ export default function LoginScreen() {
         showBack
         onBack={() => router.replace("/")}
       />
-
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
@@ -73,14 +68,12 @@ export default function LoginScreen() {
               Accede a tus alertas personalizadas y misiones
             </Text>
           </View>
-
           {!!formError && (
             <View style={styles.errorBox}>
               <Ionicons name="alert-circle" size={18} color="#B71C1C" />
               <Text style={styles.errorText}>{formError}</Text>
             </View>
           )}
-
           <View style={styles.form}>
             <Input
               label="Correo Electrónico"
@@ -110,7 +103,6 @@ export default function LoginScreen() {
               error={errors.password}
               onSubmitEditing={handleLogin}
             />
-
             <Button
               title="Ingresar"
               onPress={handleLogin}
@@ -118,7 +110,6 @@ export default function LoginScreen() {
               loading={loading}
               style={styles.loginButton}
             />
-
             <View style={styles.footer}>
               <Text style={styles.footerText}>¿No tienes una cuenta? </Text>
               <Pressable onPress={() => router.push("/(auth)/register")}>
@@ -131,7 +122,6 @@ export default function LoginScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
   flex: { flex: 1 },

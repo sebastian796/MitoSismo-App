@@ -1,5 +1,4 @@
 package com.mito.sismo.entity.enums;
-
 public enum Pais {
     ARGENTINA,
     BOLIVIA,

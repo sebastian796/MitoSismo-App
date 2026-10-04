@@ -1,5 +1,4 @@
 package com.mito.sismo.controller;
-
 import com.mito.sismo.dto.entidades.RotateAccesTokenDTO;
 import com.mito.sismo.dto.entidades.UsuarioDTO;
 import com.mito.sismo.dto.request.TokenRequest;
@@ -13,21 +12,17 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/auth")
 public class AuthController {
-
     private final UsuarioService usuarioService;
     private final RefreshTokenService refreshTokenService;
     private final JwtUtil jwtUtil;
-
     @GetMapping("/")
     public String saludar(){
         return ":: API MitoSismos: Funcional";
     }
-    // -Registrar Nuevo Usuario
     @PostMapping("/registrar")
     public ResponseEntity<UsuarioDTO> registrarUsuario(
             @Valid
@@ -37,8 +32,6 @@ public class AuthController {
         UsuarioDTO usuario = usuarioService.registrarUsuario(usuarioCreateDTO);
         return ResponseEntity.ok(usuario);
     }
-
-    // Iniciar Sesion Usuario
     @PostMapping("/login")
     public ResponseEntity<UsuarioDTO> loginUsuario(
             @Valid
@@ -48,8 +41,6 @@ public class AuthController {
         UsuarioDTO usuario = usuarioService.loginUsuario(usuarioLogDTO);
         return ResponseEntity.ok(usuario);
     }
-
-    // -Refrescar el Access Token
     @PostMapping("/reflesh")
     public ResponseEntity<RotateAccesTokenDTO> refleshToken(
             @Valid
@@ -59,8 +50,6 @@ public class AuthController {
             RotateAccesTokenDTO accessToken = refreshTokenService.refrescarAccessToken(refleshToken);
             return ResponseEntity.ok(accessToken);
     }
-
-    // -Invalidar Tokens
     @PostMapping("/invalidacion")
     public ResponseEntity<Void> logoutUser(
             @RequestParam
@@ -69,8 +58,6 @@ public class AuthController {
         refreshTokenService.revokeAllTokensForUser(userId);
         return ResponseEntity.ok().build();
     }
-
-    // -Validar Tokens
     @PostMapping("/validacion")
     public ResponseEntity<Boolean> validateToken(
             @RequestBody

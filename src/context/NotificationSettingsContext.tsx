@@ -20,9 +20,7 @@ import {
   DEFAULT_NOTIFICATION_SETTINGS,
   type NotificationSettings,
 } from "../types/notifications";
-
 const STORAGE_KEY = "mitosismo:notificationSettings";
-
 type Ctx = {
   settings: NotificationSettings;
   hydrated: boolean;
@@ -30,9 +28,7 @@ type Ctx = {
   setEnabled: (value: boolean) => Promise<"ok" | "denied">;
   sendTest: () => Promise<boolean>;
 };
-
 const NotificationSettingsContext = createContext<Ctx | null>(null);
-
 export function NotificationSettingsProvider({
   children,
 }: {
@@ -44,7 +40,6 @@ export function NotificationSettingsProvider({
   );
   const [hydrated, setHydrated] = useState(false);
   const settingsRef = useRef(settings);
-
   useEffect(() => {
     (async () => {
       try {
@@ -65,8 +60,6 @@ export function NotificationSettingsProvider({
       }
     })();
   }, []);
-
-  // Al tocar una notificación de sismo, abre su detalle.
   useEffect(() => {
     return subscribeToNotificationTaps((quakeId) => {
       try {
@@ -74,7 +67,6 @@ export function NotificationSettingsProvider({
       } catch {}
     });
   }, [router]);
-
   const update = useCallback(async (patch: Partial<NotificationSettings>) => {
     const next = { ...settingsRef.current, ...patch };
     settingsRef.current = next;
@@ -86,7 +78,6 @@ export function NotificationSettingsProvider({
       console.warn("No se pudo guardar la configuración:", e);
     }
   }, []);
-
   const setEnabled = useCallback(
     async (value: boolean): Promise<"ok" | "denied"> => {
       if (value) {
@@ -98,26 +89,21 @@ export function NotificationSettingsProvider({
     },
     [update],
   );
-
   const sendTest = useCallback(
     () => sendTestNotification(settingsRef.current.sound),
     [],
   );
-
   useQuakeWatcher(settings, hydrated);
-
   const value = useMemo(
     () => ({ settings, hydrated, update, setEnabled, sendTest }),
     [settings, hydrated, update, setEnabled, sendTest],
   );
-
   return (
     <NotificationSettingsContext.Provider value={value}>
       {children}
     </NotificationSettingsContext.Provider>
   );
 }
-
 export function useNotificationSettings() {
   const ctx = useContext(NotificationSettingsContext);
   if (!ctx)

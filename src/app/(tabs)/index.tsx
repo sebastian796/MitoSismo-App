@@ -24,16 +24,13 @@ import { useAuth } from "../../context/AuthContext";
 import { useNotificationSettings } from "../../context/NotificationSettingsContext";
 import { fetchRecentEarthquakes } from "../../services/earthquakeService";
 import type { Quake } from "../../types/earthquake";
-
 const HOME_COUNTRIES = ["Perú", "Chile", "Ecuador", "Colombia", "México"];
-
 function greeting() {
   const h = new Date().getHours();
   if (h < 12) return "Buenos días";
   if (h < 19) return "Buenas tardes";
   return "Buenas noches";
 }
-
 function ignisMessage(mag?: number) {
   if (mag === undefined)
     return "Estoy atento al suelo. ¡Buen momento para revisar tu mochila!";
@@ -42,20 +39,16 @@ function ignisMessage(mag?: number) {
   if (mag >= 4) return "Sismo moderado reciente. Repasa tus zonas seguras.";
   return "Suelo en calma. ¡Buen momento para completar una misión!";
 }
-
 export default function HomeScreen() {
   const router = useRouter();
   const { settings } = useNotificationSettings();
-
   const [country, setCountry] = useState("Perú");
   const [quakes, setQuakes] = useState<Quake[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
-
   const { user } = useAuth();
-
   const load = useCallback(async (c: string, isRefresh = false) => {
     const id = ++requestId.current;
     if (isRefresh) setRefreshing(true);
@@ -78,15 +71,12 @@ export default function HomeScreen() {
       }
     }
   }, []);
-
   useEffect(() => {
     load(country);
   }, [country, load]);
-
   const latest = quakes[0];
   const info = latest ? magInfo(latest.mag) : null;
   const maxMag = quakes.length ? Math.max(...quakes.map((q) => q.mag)) : null;
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -101,7 +91,7 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Header */}
+        {}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>
@@ -125,8 +115,7 @@ export default function HomeScreen() {
             {!settings.enabled && <View style={styles.notifDot} />}
           </Pressable>
         </View>
-
-        {/* Ignis */}
+        {}
         <Pressable onPress={() => router.push("/creature")}>
           <Card style={styles.creatureCard}>
             <View style={styles.creatureContent}>
@@ -146,8 +135,7 @@ export default function HomeScreen() {
             </View>
           </Card>
         </Pressable>
-
-        {/* Selector de país */}
+        {}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -170,8 +158,7 @@ export default function HomeScreen() {
             );
           })}
         </ScrollView>
-
-        {/* Contenido según estado */}
+        {}
         {loading ? (
           <View style={styles.centerBox}>
             <ActivityIndicator size="large" color={Colors.accent} />
@@ -202,14 +189,13 @@ export default function HomeScreen() {
           </Card>
         ) : (
           <>
-            {/* Último sismo */}
+            {}
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Último Sismo Registrado</Text>
               <Pressable onPress={() => router.push("/(tabs)/recent")}>
                 <Text style={styles.seeAllText}>Ver todos</Text>
               </Pressable>
             </View>
-
             <Pressable onPress={() => router.push(`/quake/${latest.id}`)}>
               <Card
                 style={[styles.latestQuakeCard, { borderLeftColor: info.dot }]}
@@ -253,8 +239,7 @@ export default function HomeScreen() {
                 </View>
               </Card>
             </Pressable>
-
-            {/* Resumen */}
+            {}
             <View style={styles.statsRow}>
               <Card style={styles.statBox}>
                 <Text style={styles.statNumber}>{quakes.length}</Text>
@@ -267,8 +252,7 @@ export default function HomeScreen() {
             </View>
           </>
         )}
-
-        {/* Acciones rápidas */}
+        {}
         <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
           Preparación y Prevención
         </Text>
@@ -294,8 +278,7 @@ export default function HomeScreen() {
             <Text style={styles.actionSub}>Gana XP y medallas</Text>
           </Pressable>
         </View>
-
-        {/* Actividad reciente */}
+        {}
         {!loading && !error && quakes.length > 1 && (
           <>
             <Text
@@ -345,7 +328,6 @@ export default function HomeScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
   scrollContent: {

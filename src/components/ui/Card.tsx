@@ -1,13 +1,11 @@
 import React, { ReactNode } from 'react';
 import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { Colors, Radii, Shadows } from '../../constants/theme';
-
 interface CardProps {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   variant?: 'elevated' | 'outlined' | 'flat';
 }
-
 export function Card({ children, style, variant = 'elevated' }: CardProps) {
   return (
     <View
@@ -23,7 +21,6 @@ export function Card({ children, style, variant = 'elevated' }: CardProps) {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface,

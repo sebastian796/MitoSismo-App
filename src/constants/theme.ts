@@ -1,11 +1,11 @@
 export const Colors = {
-  primary: '#2C1810',      // Tierra oscura andina
+  primary: '#2C1810',
   primaryDark: '#1C0C04',
-  accent: '#E8521A',       // Fuego / Ignis
+  accent: '#E8521A',
   accentLight: '#FF8A50',
   accentDark: '#C03808',
-  gold: '#C8A96E',         // Mito / Sol
-  background: '#F8F4EE',   // Arena suave
+  gold: '#C8A96E',
+  background: '#F8F4EE',
   surface: '#FFFFFF',
   surfaceAlt: '#EDE8DC',
   border: '#DDD5C5',
@@ -15,8 +15,6 @@ export const Colors = {
   textMuted: '#A89989',
   white: '#FFFFFF',
   black: '#000000',
-  
-  // Alertas Sísmicas por Magnitud
   magLeve: {
     bg: '#E8F5E9',
     text: '#2E7D32',
@@ -42,7 +40,6 @@ export const Colors = {
     label: 'Mayor',
   },
 };
-
 export const Spacing = {
   xs: 4,
   sm: 8,
@@ -52,7 +49,6 @@ export const Spacing = {
   xxl: 28,
   xxxl: 36,
 };
-
 export const Typography = {
   titleLarge: {
     fontSize: 26,
@@ -89,7 +85,6 @@ export const Typography = {
     fontWeight: '600' as const,
   },
 };
-
 export const Radii = {
   xs: 4,
   sm: 8,
@@ -98,7 +93,6 @@ export const Radii = {
   xl: 24,
   full: 9999,
 };
-
 export const Shadows = {
   sm: {
     shadowColor: '#000',
@@ -122,7 +116,6 @@ export const Shadows = {
     elevation: 6,
   },
 };
-
 export function magInfo(mag: number) {
   if (mag < 4.0) return Colors.magLeve;
   if (mag < 5.0) return Colors.magModerado;

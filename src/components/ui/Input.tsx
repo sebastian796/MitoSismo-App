@@ -9,13 +9,11 @@ import {
   ViewStyle,
 } from 'react-native';
 import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
-
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   containerStyle?: StyleProp<ViewStyle>;
 }
-
 export function Input({
   label,
   error,
@@ -26,7 +24,6 @@ export function Input({
   ...rest
 }: InputProps) {
   const [isFocused, setIsFocused] = useState(false);
-
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -52,7 +49,6 @@ export function Input({
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     marginBottom: Spacing.md,

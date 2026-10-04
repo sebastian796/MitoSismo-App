@@ -20,5 +20,4 @@ export const COUNTRIES = [
   { value: "URUGUAY", label: "Uruguay" },
   { value: "VENEZUELA", label: "Venezuela" },
 ] as const;
-
 export const DEFAULT_COUNTRY = "PERU";

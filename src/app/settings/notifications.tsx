@@ -20,11 +20,9 @@ import {
   NOTIFICATION_COUNTRIES,
   TIPS_HOUR_OPTIONS,
 } from "../../types/notifications";
-
 function SectionLabel({ children }: { children: string }) {
   return <Text style={styles.sectionLabel}>{children}</Text>;
 }
-
 function SwitchRow(props: {
   title: string;
   subtitle: string;
@@ -46,7 +44,6 @@ function SwitchRow(props: {
     </View>
   );
 }
-
 function Chip({
   label,
   selected,
@@ -67,14 +64,12 @@ function Chip({
     </Pressable>
   );
 }
-
 const MODE_INFO: Record<string, string | null> = {
   web: "Versión web: la prueba y las alertas de sismo usan notificaciones del navegador. Los consejos y recordatorios programados solo funcionan en la app del celular.",
   "expo-go":
     "Expo Go en Android no admite notificaciones del sistema. Aquí las alertas se muestran como avisos dentro de la app. Para notificaciones reales usa un development build.",
   native: null,
 };
-
 export default function NotificationsSettingsScreen() {
   const router = useRouter();
   const { settings, setEnabled, update, sendTest } = useNotificationSettings();
@@ -82,10 +77,8 @@ export default function NotificationsSettingsScreen() {
     ok: boolean;
     text: string;
   } | null>(null);
-
   const off = !settings.enabled;
   const modeInfo = MODE_INFO[notificationMode];
-
   const handleMaster = async (value: boolean) => {
     setFeedback(null);
     const result = await setEnabled(value);
@@ -99,7 +92,6 @@ export default function NotificationsSettingsScreen() {
       });
     }
   };
-
   const handleTest = async () => {
     const ok = await sendTest();
     setFeedback(
@@ -111,7 +103,6 @@ export default function NotificationsSettingsScreen() {
           },
     );
   };
-
   const toggleCountry = (c: string) => {
     const has = settings.countries.includes(c);
     update({
@@ -120,22 +111,19 @@ export default function NotificationsSettingsScreen() {
         : [...settings.countries, c],
     });
   };
-
   const quakeSummary = `M ≥ ${settings.minMagnitude.toFixed(1)} · ${
     settings.countries.length
       ? settings.countries.join(", ")
       : "todos los países"
   }`;
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <TopBar title="Notificaciones" showBack onBack={() => router.back()} />
-
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Interruptor general */}
+        {}
         <View style={styles.hero}>
           <View style={styles.heroIcon}>
             <Ionicons
@@ -166,14 +154,12 @@ export default function NotificationsSettingsScreen() {
             thumbColor={Colors.white}
           />
         </View>
-
         {modeInfo && (
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={18} color="#8A5A00" />
             <Text style={styles.infoText}>{modeInfo}</Text>
           </View>
         )}
-
         {feedback && !feedback.ok && (
           <View style={[styles.infoBox, styles.errorBox]}>
             <Ionicons name="alert-circle" size={18} color="#B71C1C" />
@@ -189,9 +175,8 @@ export default function NotificationsSettingsScreen() {
             </View>
           </View>
         )}
-
         <View style={off ? styles.disabled : undefined}>
-          {/* SISMOS */}
+          {}
           <SectionLabel>SISMOS</SectionLabel>
           <Card style={styles.card}>
             <SwitchRow
@@ -203,7 +188,6 @@ export default function NotificationsSettingsScreen() {
             {settings.quakes && (
               <View style={styles.options}>
                 <Text style={styles.summary}>Recibirás: {quakeSummary}</Text>
-
                 <Text style={styles.optionLabel}>Magnitud mínima</Text>
                 <View style={styles.chips}>
                   {MAGNITUDE_OPTIONS.map((m) => (
@@ -215,7 +199,6 @@ export default function NotificationsSettingsScreen() {
                     />
                   ))}
                 </View>
-
                 <Text style={[styles.optionLabel, { marginTop: Spacing.lg }]}>
                   Países
                 </Text>
@@ -237,8 +220,7 @@ export default function NotificationsSettingsScreen() {
               </View>
             )}
           </Card>
-
-          {/* PREVENCIÓN */}
+          {}
           <SectionLabel>PREVENCIÓN</SectionLabel>
           <Card style={styles.card}>
             <SwitchRow
@@ -270,8 +252,7 @@ export default function NotificationsSettingsScreen() {
               onChange={(v) => update({ missions: v })}
             />
           </Card>
-
-          {/* SONIDO */}
+          {}
           <SectionLabel>SONIDO</SectionLabel>
           <Card style={styles.card}>
             <SwitchRow
@@ -281,8 +262,7 @@ export default function NotificationsSettingsScreen() {
               onChange={(v) => update({ sound: v })}
             />
           </Card>
-
-          {/* PRUEBA */}
+          {}
           <Button
             title="Enviar notificación de prueba"
             variant="outline"
@@ -295,7 +275,6 @@ export default function NotificationsSettingsScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
   content: {
@@ -304,7 +283,6 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xxxl,
   },
   disabled: { opacity: 0.45, pointerEvents: "none" },
-
   hero: {
     flexDirection: "row",
     alignItems: "center",
@@ -327,7 +305,6 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
     marginTop: 2,
   },
-
   infoBox: {
     flexDirection: "row",
     gap: Spacing.sm,
@@ -345,7 +322,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 6,
   },
-
   sectionLabel: {
     fontSize: 11,
     fontWeight: "700",
@@ -366,7 +342,6 @@ const styles = StyleSheet.create({
   rowTitle: { ...Typography.bodyLarge, fontWeight: "600" },
   rowSub: { ...Typography.bodySmall, marginTop: 2 },
   divider: { height: 1, backgroundColor: Colors.border },
-
   options: { paddingBottom: Spacing.lg },
   summary: {
     fontSize: 12,
@@ -397,7 +372,6 @@ const styles = StyleSheet.create({
   chipSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   chipText: { fontSize: 12, fontWeight: "600", color: Colors.textSecondary },
   chipTextSelected: { color: Colors.white },
-
   testButton: { marginTop: Spacing.xl },
   okText: {
     textAlign: "center",

@@ -1,5 +1,4 @@
 export * from './earthquake';
-
 export type Mission = {
   id: number;
   title: string;
@@ -9,7 +8,6 @@ export type Mission = {
   completed: boolean;
   icon: string;
 };
-
 export type Creature = {
   id: string;
   name: string;
@@ -26,7 +24,6 @@ export type Creature = {
     unlocked: boolean;
   }[];
 };
-
 export type EmergencyContact = {
   name: string;
   number: string;
