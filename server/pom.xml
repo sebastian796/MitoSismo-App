@@ -102,7 +102,11 @@
 			<artifactId>nimbus-jose-jwt</artifactId>
 			<version>9.37.3</version> <!-- versión estable y actual -->
 		</dependency>
-
+		<dependency>
+			<groupId>com.netflix.graphql.dgs.codegen</groupId>
+			<artifactId>graphql-dgs-codegen-gradle</artifactId>
+			<version>8.3.0</version>
+		</dependency>
 
 
 	</dependencies>

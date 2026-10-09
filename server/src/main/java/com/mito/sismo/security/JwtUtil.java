@@ -1,27 +1,35 @@
 package com.mito.sismo.security;
 
-import com.mito.sismo.entity.RefreshToken;
-import com.mito.sismo.repository.RefreshTokenRepository;
-import com.mito.sismo.service.RefreshTokenService;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.awt.*;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
-import java.util.List;
 
+/**
+ * Utilidad para la creación, firma y validación de tokens JWT (HS256).
+ */
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret}")
+    @Value("${jwt.secret:cGFzc3dvcmRfc3VwZXJfc2VjcmV0X2tleV9taXRvc2lzbW9fYXBwXzIwMjZfMjU2Yml0cw==}")
     private String secret;
+
+    // Obtener bytes de la clave asegurando el tamaño mínimo requerido por HMAC-SHA256 (32 bytes / 256 bits)
+    private byte[] getSecretBytes() {
+        byte[] keyBytes = (secret != null ? secret : "mitosis_secret_default_key_2026_safe").getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            byte[] padded = new byte[32];
+            System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
+            return padded;
+        }
+        return keyBytes;
+    }
 
     // Genera Access Token con expiración de 15 minutos
     public String generateAccessToken(Long userId, String username, String email, String role) {
@@ -43,7 +51,7 @@ public class JwtUtil {
                     .build();
 
             SignedJWT signedJWT = new SignedJWT(header, claims);
-            signedJWT.sign(new MACSigner(secret.getBytes()));
+            signedJWT.sign(new MACSigner(getSecretBytes()));
 
             return signedJWT.serialize();
         } catch (Exception e) {
@@ -55,13 +63,13 @@ public class JwtUtil {
     public String generateRefreshToken(Long userId, String username, String email, String rol) {
         try {
             Date now = new Date();
-            Date expiry = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 días
+            Date expiry = new Date(now.getTime() + 7L * 24 * 60 * 60 * 1000); // 7 días
 
             JWTClaimsSet claims = new JWTClaimsSet.Builder()
                     .subject(username)
                     .claim("userId", userId)
                     .claim("email", email)
-                    .claim("role",rol)
+                    .claim("role", rol)
                     .issueTime(now)
                     .expirationTime(expiry)
                     .build();
@@ -71,7 +79,7 @@ public class JwtUtil {
                     .build();
 
             SignedJWT signedJWT = new SignedJWT(header, claims);
-            signedJWT.sign(new MACSigner(secret.getBytes()));
+            signedJWT.sign(new MACSigner(getSecretBytes()));
 
             return signedJWT.serialize();
         } catch (Exception e) {
@@ -79,11 +87,11 @@ public class JwtUtil {
         }
     }
 
-    // Valida cualquier token
+    // Valida la firma y expiración de cualquier token
     public boolean validateToken(String token) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
-            JWSVerifier verifier = new MACVerifier(secret.getBytes());
+            JWSVerifier verifier = new MACVerifier(getSecretBytes());
 
             if (!signedJWT.verify(verifier)) {
                 return false;
@@ -96,7 +104,7 @@ public class JwtUtil {
         }
     }
 
-    // Extrae email
+    // Extrae email del claim
     public String extractEmail(String token) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
@@ -106,7 +114,7 @@ public class JwtUtil {
         }
     }
 
-    // Extrae rol
+    // Extrae rol del claim
     public String extractRole(String token) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
@@ -116,7 +124,7 @@ public class JwtUtil {
         }
     }
 
-    // Extrae userId
+    // Extrae userId del claim
     public Long extractUserId(String token) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);

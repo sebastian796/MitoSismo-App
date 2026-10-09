@@ -4,6 +4,9 @@ import com.mito.sismo.entity.enums.Pais;
 import jakarta.persistence.*;
 import lombok.*;
 
+/**
+ * Entidad de catálogo para números y líneas de emergencia según el país.
+ */
 @Entity
 @Table(name = "contactos_emergencia")
 @Getter
@@ -21,7 +24,11 @@ public class ContactoEmergencia {
     private String numero;
     private String descripcion;
     private String icono;
+
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Pais pais = Pais.PERU;
+
+    @Builder.Default
     private Integer orden = 0;
 }

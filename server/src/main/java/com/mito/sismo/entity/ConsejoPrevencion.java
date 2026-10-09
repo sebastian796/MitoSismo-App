@@ -3,6 +3,9 @@ package com.mito.sismo.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+/**
+ * Entidad de catálogo para consejos y recomendaciones de prevención ante sismos.
+ */
 @Entity
 @Table(name = "consejos_prevencion")
 @Getter
@@ -21,6 +24,7 @@ public class ConsejoPrevencion {
     private FasePrevencion fase;
 
     private String consejo;
+
+    @Builder.Default
     private Integer orden = 0;
 }
-

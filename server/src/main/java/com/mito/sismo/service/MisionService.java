@@ -1,24 +1,32 @@
 package com.mito.sismo.service;
 
 import com.mito.sismo.dto.entidades.MisionDTO;
-import com.mito.sismo.entity.*;
+import com.mito.sismo.dto.request.MisionRequest;
+import com.mito.sismo.entity.InfoMisionDTO;
+import com.mito.sismo.entity.Mision;
+import com.mito.sismo.entity.Usuario;
+import com.mito.sismo.entity.UsuarioCriatura;
+import com.mito.sismo.entity.UsuarioMision;
 import com.mito.sismo.entity.enums.Estado;
-import com.mito.sismo.exception.GeneralAuthException;
-import com.mito.sismo.repository.CriaturaRepository;
+import com.mito.sismo.exception.ResourceNotFoundException;
+import com.mito.sismo.exception.UnauthorizedAccessException;
 import com.mito.sismo.repository.MisionRepository;
 import com.mito.sismo.repository.UsuarioMisionRepository;
-import com.mito.sismo.repository.UsuarioRepository;
-import com.mito.sismo.security.JwtUtil;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.List;import java.util.stream.Collectors;
+import java.util.List;
+import java.util.stream.Collectors;
 
+/**
+ * Servicio para la gestión de misiones de preparación sísmica y progreso del
+ * usuario.
+ */
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class MisionService {
 
     private final MisionRepository misionRepository;
@@ -27,102 +35,152 @@ public class MisionService {
     private final CriaturaService criaturaService;
     private final JdbcTemplate jdbc;
 
-    // -Traer Todas las Misiones
+    // Listar todas las misiones asociadas al usuario autenticado
     @Transactional(readOnly = true)
-    public List<MisionDTO> traerListaMisiones(String authHeader){
+    public List<MisionDTO> traerListaMisiones(String authHeader) {
         Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
         List<UsuarioMision> listMissionUser = userMisionRepository.findByUsuarioId(usuario.getId());
-        List<MisionDTO> listMisiones = listMissionUser.stream()
-                .map(mision -> MisionDTO.fromEntity(mision.getMision())
-                ).collect(Collectors.toList());
-        return listMisiones;
-    }
-
-    // Lista Misiones Completadas
-    @Transactional(readOnly = true)
-    public List<MisionDTO> getListMissionComplet(
-            String authHeader
-    ){
-        Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
-        List<UsuarioMision> listMissionUser = userMisionRepository.findByUsuarioId(usuario.getId());
-        List<MisionDTO> listMisiones = listMissionUser.stream()
-                .filter(mision -> mision.getCompletada())
-                .map(mision -> MisionDTO.fromEntity(mision.getMision(),true))
+        return listMissionUser.stream()
+                .map(mision -> MisionDTO.fromEntity(mision.getMision(), Boolean.TRUE.equals(mision.getCompletada())))
                 .collect(Collectors.toList());
-        return listMisiones;
     }
 
-    // Listar Misiones Imcompletas
+    // Listar misiones completadas por el usuario
     @Transactional(readOnly = true)
-    public List<MisionDTO> getListMissionIncomplet(
-            String authHeader
-    ){
+    public List<MisionDTO> getListMissionComplet(String authHeader) {
         Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
         List<UsuarioMision> listMissionUser = userMisionRepository.findByUsuarioId(usuario.getId());
-        List<MisionDTO> listMisiones = listMissionUser.stream()
-                .filter(mision -> !mision.getCompletada())
+        return listMissionUser.stream()
+                .filter(mision -> Boolean.TRUE.equals(mision.getCompletada()))
+                .map(mision -> MisionDTO.fromEntity(mision.getMision(), true))
+                .collect(Collectors.toList());
+    }
+
+    // Listar misiones pendientes/incompletas del usuario
+    @Transactional(readOnly = true)
+    public List<MisionDTO> getListMissionIncomplet(String authHeader) {
+        Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
+        List<UsuarioMision> listMissionUser = userMisionRepository.findByUsuarioId(usuario.getId());
+        return listMissionUser.stream()
+                .filter(mision -> !Boolean.TRUE.equals(mision.getCompletada()))
                 .map(mision -> MisionDTO.fromEntity(mision.getMision(), false))
                 .collect(Collectors.toList());
-        return listMisiones;
     }
 
-    // -Mostrar Mision Especifica
+    // Obtener detalle de una misión específica por su ID de relación usuario-misión
+    // o catálogo
     @Transactional(readOnly = true)
-    public InfoMisionDTO getMisionEspecifica(
-            Long idMisionUser
-    ){
+    public InfoMisionDTO getMisionEspecifica(Long idMisionUser) {
         UsuarioMision mission = userMisionRepository.findById(idMisionUser)
-                .orElseThrow(()-> new GeneralAuthException(
-                        "api/mision/especifica",
-                        "Mision no Existente",
-                        "Mision: "+idMisionUser
-                ));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Misión de usuario no encontrada con ID: " + idMisionUser));
         return InfoMisionDTO.fromEntity(mission);
     }
 
-    // Validar Mision
+    // Validar y marcar una misión como completada, asignando experiencia a la
+    // mascota
     @Transactional
-    public InfoMisionDTO marcarCompletado(
-            Long idMisionUser,
-            String authHeader
-    ){
-        // Traer la Mision
-        UsuarioMision misionUser = userMisionRepository.findById(idMisionUser)
-                .orElseThrow(()-> new GeneralAuthException(
-                        "api/misiones/validacionMision",
-                        "Mision No Existente",
-                        "Mision: "+idMisionUser
-                ));
-
-        // Extraer datos necesarios
+    public InfoMisionDTO marcarCompletado(Long idMision, String authHeader) {
         Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
-        UsuarioCriatura mascota = criaturaService.getCriaturaUsuario(usuario.getId());
 
-        // Verificar que sea mision del usuario
-        if(!usuario.getId().equals(misionUser.getUsuario().getId()) && misionUser.getCompletada()){
-            new GeneralAuthException(
-                    "api/misiones/validacionMision",
-                    "Mision no Perteneciente o Completa",
-                    "Usuario: "+usuario.getId()
-            );
+        // Buscar primero por relación usuario y mision_id catálogo, o por el id directo
+        // del registro UsuarioMision
+        UsuarioMision misionUser = userMisionRepository.findByUsuarioIdAndMisionId(usuario.getId(), idMision.intValue())
+                .orElseGet(() -> userMisionRepository.findById(idMision)
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "No se encontró la misión solicitada con ID: " + idMision)));
+
+        // Validación de pertenencia al usuario autenticado
+        if (!usuario.getId().equals(misionUser.getUsuario().getId())) {
+            throw new UnauthorizedAccessException();
         }
 
-        // Recalcular Xp criatura
-        criaturaService.recalcularXpCriatura(mascota,misionUser.getMision().getXpRecompensa());
+        // Validación de no duplicar completado ni experiencia
+        if (Boolean.TRUE.equals(misionUser.getCompletada())) {
+            throw new IllegalArgumentException("Esta misión ya fue completada previamente.");
+        }
 
-        // Marcar como completa
+        // Otorgar experiencia a la criatura activa del usuario
+        try {
+            UsuarioCriatura mascota = criaturaService.getCriaturaUsuario(usuario.getId());
+            if (mascota != null && misionUser.getMision() != null && misionUser.getMision().getXpRecompensa() != null) {
+                criaturaService.recalcularXpCriatura(mascota, misionUser.getMision().getXpRecompensa());
+            }
+        } catch (Exception e) {
+            // Continuar incluso si la mascota no está registrada por alguna inconsistencia
+        }
+
+        // Actualizar el estado de la misión
         misionUser.setProgreso(100);
         misionUser.setCompletada(true);
         misionUser.setFechaCompletada(Instant.now());
         misionUser.setEstado(Estado.COMPLETED);
         misionUser.setXpOtorgada(true);
-        UsuarioMision misionCompleta = userMisionRepository.save(misionUser); // Save Mision
+
+        UsuarioMision misionCompleta = userMisionRepository.save(misionUser);
+
+        // Actualizar desbloqueo de misiones posteriores que dependían de ésta
+        reconcileUnlocksForUsuario(usuario.getId());
 
         return InfoMisionDTO.fromEntity(misionCompleta);
     }
 
+    // Listar todo el catálogo público de misiones
+    @Transactional(readOnly = true)
+    public List<MisionDTO> listarCatalogoMisiones() {
+        return misionRepository.findAll().stream()
+                .map(MisionDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
 
-    // Inicializar misiones cuando se registra usuario
+    // Obtener misión por ID del catálogo
+    @Transactional(readOnly = true)
+    public MisionDTO obtenerMisionPorId(Integer id) {
+        Mision mision = misionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Misión no encontrada con ID: " + id));
+        return MisionDTO.fromEntity(mision);
+    }
+
+    // Crear una nueva misión en el catálogo
+    @Transactional
+    public MisionDTO crearMision(MisionRequest request) {
+        Mision mision = new Mision();
+        mision.setTitulo(request.getTitulo());
+        mision.setDescripcion(request.getDescripcion());
+        mision.setXpRecompensa(request.getXpRecompensa());
+        mision.setGrado(request.getGrado());
+        mision.setImageUrl(request.getImageUrl());
+        mision.setCreatedAt(Instant.now());
+
+        Mision guardada = misionRepository.save(mision);
+        return MisionDTO.fromEntity(guardada);
+    }
+
+    // Modificar una misión existente
+    @Transactional
+    public MisionDTO actualizarMision(Integer id, MisionRequest request) {
+        Mision mision = misionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Misión no encontrada con ID: " + id));
+
+        mision.setTitulo(request.getTitulo());
+        mision.setDescripcion(request.getDescripcion());
+        mision.setXpRecompensa(request.getXpRecompensa());
+        mision.setGrado(request.getGrado());
+        mision.setImageUrl(request.getImageUrl());
+
+        return MisionDTO.fromEntity(misionRepository.save(mision));
+    }
+
+    // Eliminar una misión del catálogo
+    @Transactional
+    public void eliminarMision(Integer id) {
+        if (!misionRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Misión no encontrada con ID: " + id);
+        }
+        misionRepository.deleteById(id);
+    }
+
+    // Inicializar misiones cuando se registra un usuario nuevo
     @Transactional
     public void inicializarMisionesParaUsuario(Long usuarioId) {
         String sql = ""
@@ -136,7 +194,7 @@ public class MisionService {
         jdbc.update(sql, usuarioId);
     }
 
-    // Refrescar las misiones de un usuario (desbloquear cuando todos los prerequisitos están completados)
+    // Refrescar y desbloquear misiones cuyos prerrequisitos ya fueron cumplidos
     @Transactional
     public void reconcileUnlocksForUsuario(Long usuarioId) {
         String sql = ""
@@ -160,7 +218,4 @@ public class MisionService {
                 + "  AND um2.estado <> 'UNLOCKED'";
         jdbc.update(sql, usuarioId, usuarioId);
     }
-
-
-
 }

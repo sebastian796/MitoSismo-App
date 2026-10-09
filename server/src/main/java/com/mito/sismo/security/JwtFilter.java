@@ -1,7 +1,6 @@
 package com.mito.sismo.security;
 
 import com.mito.sismo.dto.CustomUserPrincipal;
-import com.mito.sismo.exception.InvalidTokenException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,12 +17,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Collections;
 
+/**
+ * Filtro interceptor que valida el token Bearer JWT en cada petición HTTP
+ * y establece el contexto de seguridad de Spring Security.
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -33,41 +35,42 @@ public class JwtFilter extends OncePerRequestFilter {
 
         final String authHeader = request.getHeader("Authorization");
 
+        // Verificar presencia del encabezado Authorization Bearer
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String jwtToken = authHeader.substring(7);
+            String jwtToken = authHeader.substring(7).trim();
             try {
-                if (!jwtUtil.validateToken(jwtToken)) {
-                    throw new InvalidTokenException("El token ha expirado o no es válido.");
+                // Validar firma y vigencia del JWT
+                if (jwtUtil.validateToken(jwtToken)) {
+                    Long userId = jwtUtil.extractUserId(jwtToken);
+                    String email = jwtUtil.extractEmail(jwtToken);
+                    String role = jwtUtil.extractRole(jwtToken);
+
+                    // Si el usuario no está aún autenticado en el contexto actual
+                    if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                        GrantedAuthority authority = new SimpleGrantedAuthority(role != null ? role : "USUARIO");
+
+                        CustomUserPrincipal principal = new CustomUserPrincipal(userId, email, role);
+
+                        UsernamePasswordAuthenticationToken authToken =
+                                new UsernamePasswordAuthenticationToken(
+                                        principal,
+                                        null,
+                                        Collections.singletonList(authority)
+                                );
+
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                    }
+                } else {
+                    logger.warn("Token JWT no válido o expirado recibido para: " + request.getRequestURI());
                 }
-
-                // Extraer claims del token
-                Long userId = jwtUtil.extractUserId(jwtToken);
-                String email = jwtUtil.extractEmail(jwtToken);
-                String role = jwtUtil.extractRole(jwtToken);
-
-                // Configurar contexto de seguridad
-                if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    GrantedAuthority authority = new SimpleGrantedAuthority(role);
-
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(
-                                    new CustomUserPrincipal(userId, email, role), // principal con datos del usuario
-                                    null,
-                                    Collections.singletonList(authority)
-                            );
-
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                }
-
-            } catch (InvalidTokenException e) {
-                logger.error("Error de autenticación JWT: " + e.getMessage());
-                throw e;
             } catch (Exception e) {
-                throw new RuntimeException("Error procesando JWT", e);
+                // Registrar advertencia sin detener el ciclo con excepción no controlada
+                logger.error("Error al procesar el token JWT: " + e.getMessage());
             }
         }
 
+        // Continuar con la cadena de filtros
         filterChain.doFilter(request, response);
     }
 }

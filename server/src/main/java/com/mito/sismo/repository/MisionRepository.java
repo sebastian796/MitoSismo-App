@@ -1,14 +1,18 @@
 package com.mito.sismo.repository;
 
 import com.mito.sismo.entity.Mision;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
 
-public interface MisionRepository extends JpaRepository<Mision, Long> {
-    Optional<Mision> findByTitulo(String titulo);
-}
+/**
+ * Repositorio JPA para el catálogo de misiones.
+ */
+@Repository
+public interface MisionRepository extends JpaRepository<Mision, Integer> {
 
+    Optional<Mision> findByTitulo(String titulo);
+
+    boolean existsByTitulo(String titulo);
+}

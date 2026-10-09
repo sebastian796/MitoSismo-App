@@ -5,6 +5,9 @@ import lombok.*;
 
 import java.time.Instant;
 
+/**
+ * Entidad que registra los ítems de la mochila de emergencia guardados/marcados por el usuario.
+ */
 @Entity
 @Table(name = "usuario_mochila_items")
 @Getter
@@ -26,7 +29,10 @@ public class UsuarioMochilaItem {
     @JoinColumn(name = "item_mochila_id", nullable = false)
     private ItemMochila itemMochila;
 
+    @Builder.Default
     private Boolean marcado = false;
+
+    @Builder.Default
     private Instant updatedAt = Instant.now();
 
     @PreUpdate

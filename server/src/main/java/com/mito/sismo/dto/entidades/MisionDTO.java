@@ -2,7 +2,6 @@ package com.mito.sismo.dto.entidades;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.mito.sismo.entity.Mision;
-import com.mito.sismo.entity.UsuarioMision;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,7 +20,7 @@ import lombok.NoArgsConstructor;
         "imageUrl"
 })
 public class MisionDTO {
-    //Datos Misiones
+    // Datos Misiones
     private String titulo;
     private String descripcion;
     private Integer xpRecompensa;
@@ -29,8 +28,8 @@ public class MisionDTO {
     private String imageUrl;
     private Boolean completada;
 
-    public static MisionDTO fromEntity(Mision mision){
-        fromEntity(mision, null);
+    public static MisionDTO fromEntity(Mision mision) {
+        return fromEntity(mision, null);
     }
 
     public static MisionDTO fromEntity(Mision mision, Boolean completada) {
@@ -43,6 +42,5 @@ public class MisionDTO {
                 .completada(completada)
                 .build();
     }
-
 
 }

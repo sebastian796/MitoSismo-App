@@ -4,7 +4,8 @@ import com.mito.sismo.dto.entidades.RotateAccesTokenDTO;
 import com.mito.sismo.dto.request.TokenRequest;
 import com.mito.sismo.entity.RefreshToken;
 import com.mito.sismo.entity.Usuario;
-import com.mito.sismo.exception.GeneralAuthException;
+import com.mito.sismo.exception.InvalidTokenException;
+import com.mito.sismo.exception.UsuarioNotFoundException;
 import com.mito.sismo.repository.RefreshTokenRepository;
 import com.mito.sismo.repository.UsuarioRepository;
 import com.mito.sismo.security.JwtUtil;
@@ -15,6 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+/**
+ * Servicio para la gestión del ciclo de vida y rotación de Refresh Tokens.
+ */
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
@@ -23,41 +27,43 @@ public class RefreshTokenService {
     private final UsuarioRepository usuarioRepository;
     private final JwtUtil jwtUtil;
 
-
-    // Crear un nuevo refresh token (usando JWT generado en JwtUtil)
+    // Guardar nuevo refresh token en la base de datos
     public RefreshToken guardarToken(Usuario usuario, String jwtToken) {
         RefreshToken refreshToken = RefreshToken.builder()
                 .usuario(usuario)
-                .token(jwtToken) // aquí guardas el JWT completo
+                .token(jwtToken)
+                .expiresAt(LocalDateTime.now().plusDays(7))
+                .revoked(false)
+                .createdAt(LocalDateTime.now())
                 .build();
 
         return refreshTokenRepository.save(refreshToken);
     }
 
-    // Generar Refresh token
-    public String generarRefreshToken(Usuario usuario){
+    // Generar Refresh Token JWT
+    public String generarRefreshToken(Usuario usuario) {
         return jwtUtil.generateRefreshToken(
                 usuario.getId(),
                 usuario.getNombre(),
                 usuario.getEmail(),
-                usuario.getRol().toString()
+                usuario.getRol() != null ? usuario.getRol().name() : "USUARIO"
         );
     }
 
-    // Generar Acces Token
-    public String generarAccessToken(Usuario usuario){
+    // Generar Access Token JWT
+    public String generarAccessToken(Usuario usuario) {
         return jwtUtil.generateAccessToken(
                 usuario.getId(),
                 usuario.getNombre(),
                 usuario.getEmail(),
-                usuario.getRol().toString()
+                usuario.getRol() != null ? usuario.getRol().name() : "USUARIO"
         );
     }
 
-    // Validar refresh token
+    // Validar si el refresh token existe, no ha sido revocado y no ha expirado
     public Optional<RefreshToken> validateRefreshToken(String token) {
         return refreshTokenRepository.findByToken(token)
-                .filter(rt -> !rt.getRevoked() && rt.getExpiresAt().isAfter(LocalDateTime.now()));
+                .filter(rt -> !Boolean.TRUE.equals(rt.getRevoked()) && rt.getExpiresAt().isAfter(LocalDateTime.now()));
     }
 
     // Revocar un refresh token específico
@@ -66,14 +72,11 @@ public class RefreshTokenService {
         refreshTokenRepository.save(refreshToken);
     }
 
-    // Revocar todos los tokens de un usuario (ej. en logout)
+    // Revocar todos los tokens de un usuario (para cierre de sesión / logout global)
+    @Transactional
     public void revokeAllTokensForUser(Long userId) {
         Usuario usuario = usuarioRepository.findById(userId)
-                        .orElseThrow(()-> new GeneralAuthException(
-                                "Usuario No Existente",
-                                "api/auth/invalidacion",
-                                "ID: "+userId
-                        ));
+                .orElseThrow(() -> new UsuarioNotFoundException(userId));
         refreshTokenRepository.findAllByUsuario(usuario)
                 .forEach(rt -> {
                     rt.setRevoked(true);
@@ -81,30 +84,26 @@ public class RefreshTokenService {
                 });
     }
 
-    // Rotar refresh token (invalida el anterior y crea uno nuevo)
+    // Rotar refresh token: invalida el anterior y genera un nuevo registro
     public RefreshToken rotateToken(RefreshToken oldToken, String newJwtToken) {
         revokeToken(oldToken);
         return guardarToken(oldToken.getUsuario(), newJwtToken);
     }
 
-    // Refrescar Token antiguo por nuevo
+    // Refrescar Access Token a partir de un Refresh Token válido
     @Transactional
-    public RotateAccesTokenDTO refrescarAccessToken(TokenRequest refreshTokenRequest){
-        // Validar Refresh Token
+    public RotateAccesTokenDTO refrescarAccessToken(TokenRequest refreshTokenRequest) {
         RefreshToken refreshTokenAntiguo = validateRefreshToken(refreshTokenRequest.getToken())
-                .orElseThrow(()-> new GeneralAuthException(
-                        "Token Invalido",
-                        "api/auth/refresh",
-                        "Token: "+ refreshTokenRequest.getToken()
-                ));
-        // Generar Nuevo Access y Refresh Token
-        String accessToken = generarAccessToken(refreshTokenAntiguo.getUsuario());
-        String refreshToken = generarRefreshToken(refreshTokenAntiguo.getUsuario());
-        rotateToken(refreshTokenAntiguo,refreshToken);
-        return RotateAccesTokenDTO.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
+                .orElseThrow(() -> new InvalidTokenException("El refresh token proporcionado no es válido o ha expirado."));
 
+        // Generar nuevos tokens (rotación)
+        String nuevoAccessToken = generarAccessToken(refreshTokenAntiguo.getUsuario());
+        String nuevoRefreshToken = generarRefreshToken(refreshTokenAntiguo.getUsuario());
+        rotateToken(refreshTokenAntiguo, nuevoRefreshToken);
+
+        return RotateAccesTokenDTO.builder()
+                .accessToken(nuevoAccessToken)
+                .refreshToken(nuevoRefreshToken)
+                .build();
     }
 }

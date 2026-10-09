@@ -6,6 +6,9 @@ import lombok.*;
 
 import java.time.Instant;
 
+/**
+ * Entidad que registra el reporte de estado de seguridad enviado por un usuario ante un sismo.
+ */
 @Entity
 @Table(name = "reportes_seguridad")
 @Getter
@@ -23,16 +26,22 @@ public class ReporteSeguridad {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
+    @Column(name = "sismo_externo_id")
     private String sismoExternoId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "estado_seguridad")
-    private EstadoSeguridad estadoSeguridad = EstadoSeguridad.DESCONOCIDO; // Enum-like
+    @Builder.Default
+    private EstadoSeguridad estadoSeguridad = EstadoSeguridad.DESCONOCIDO;
 
+    @Builder.Default
     private Boolean sentido = true;
+
     private Double latitud;
     private Double longitud;
     private String comentario;
 
+    @Builder.Default
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 }
