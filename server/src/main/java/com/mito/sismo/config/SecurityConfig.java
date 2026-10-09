@@ -56,7 +56,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
 
                         // Catálogos públicos de sólo lectura (criaturas, fases, contactos, etc.)
-                        .requestMatchers(HttpMethod.GET, "/api/criaturas/publico", "/api/criaturas/prueba").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/criatura/publico", "/api/criatura/eleccion").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/fases-prevencion/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/contactos-emergencia/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/misiones/publico").permitAll()

@@ -44,7 +44,7 @@ public class UsuarioService {
     private final ConfiguracionUsuarioRepository configuracionUsuarioRepository;
     private final RefreshTokenService refreshTokenService;
 
-    private final MisionService misionService;
+    private final MisionSqlService sql;
 
     // Registro de un nuevo usuario en la plataforma
     @Transactional
@@ -87,7 +87,7 @@ public class UsuarioService {
                 .build());
 
         // 4. Inicializar árbol de misiones para el nuevo usuario
-        misionService.inicializarMisionesParaUsuario(usuario.getId());
+        sql.inicializarMisionesParaUsuario(usuario.getId());
 
         // 5. Asignar criatura inicial
         Criatura criatura = criaturaRepository.findById(userCreate.getCriaturaId())
