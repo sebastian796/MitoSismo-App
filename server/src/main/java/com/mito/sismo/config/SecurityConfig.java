@@ -63,7 +63,7 @@ public class SecurityConfig {
 
                         // Endpoints que requieren usuario autenticado
                         .requestMatchers("/api/misiones/**").authenticated()
-                        .requestMatchers("/api/usuarios/**").authenticated()
+                        .requestMatchers("/api/usuario/**").authenticated()
                         .requestMatchers("/api/mochila/**").authenticated()
                         .requestMatchers("/api/reportes-seguridad/**").authenticated()
                         .requestMatchers("/api/configuracion/**").authenticated()

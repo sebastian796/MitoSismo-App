@@ -1,17 +1,13 @@
 package com.mito.sismo.service;
 
-import com.mito.sismo.dto.entidades.CriaturaDTO;
-import com.mito.sismo.dto.entidades.CriaturaDataDTO;
-import com.mito.sismo.dto.entidades.UsuarioDTO;
+import com.mito.sismo.dto.entidades.*;
 import com.mito.sismo.dto.request.LoginRequest;
-import com.mito.sismo.dto.request.UpdateUsuarioRequest;
 import com.mito.sismo.dto.request.UserCreateRequest;
 import com.mito.sismo.entity.ConfiguracionUsuario;
 import com.mito.sismo.entity.Criatura;
 import com.mito.sismo.entity.Usuario;
 import com.mito.sismo.entity.UsuarioCriatura;
 import com.mito.sismo.entity.enums.Pais;
-import com.mito.sismo.entity.enums.Role;
 import com.mito.sismo.exception.*;
 import com.mito.sismo.repository.ConfiguracionUsuarioRepository;
 import com.mito.sismo.repository.CriaturaRepository;
@@ -20,81 +16,63 @@ import com.mito.sismo.repository.UsuarioRepository;
 import com.mito.sismo.security.EncryptionUtil;
 import com.mito.sismo.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
-/**
- * Servicio para la gestión de usuarios, registro, autenticación segura y
- * perfil.
- */
 @Service
 @RequiredArgsConstructor
 public class UsuarioService {
 
     private final EncryptionUtil encrypt;
     private final JwtUtil jwtUtil;
-
-    private final UsuarioRepository usuarioRepository;
-    private final CriaturaRepository criaturaRepository;
-    private final UsuarioCriaturaRepository usuarioCriaturaRepository;
-    private final ConfiguracionUsuarioRepository configuracionUsuarioRepository;
+    private final MisionSqlService sql;
     private final RefreshTokenService refreshTokenService;
 
-    private final MisionSqlService sql;
+    private final UsuarioRepository userRepo;
+    private final ConfiguracionUsuarioRepository configUserRepo;
+    private final CriaturaRepository criaRepo;
+    private final UsuarioCriaturaRepository userCriaRepo;
 
-    // Registro de un nuevo usuario en la plataforma
+    // -Registro de un nuevo usuario en la plataforma
     @Transactional
-    public UsuarioDTO registrarUsuario(UserCreateRequest userCreate) {
+    public TokensDTO registrarUsuario(UserCreateRequest userCreateReq) {
         // 1. Verificación de correo no duplicado
-        if (usuarioRepository.existsByEmail(userCreate.getEmail())) {
+        if (userRepo.existsByEmail(userCreateReq.getEmail())) {
             throw new EmailAlreadyExistsException(
-                    "El correo " + userCreate.getEmail() + " ya se encuentra registrado.");
+                    "El correo " + userCreateReq.getEmail() + " ya se encuentra registrado.");
         }
 
-        Pais paisSeleccionado = Pais.PERU;
-        if (userCreate.getPais() != null) {
-            try {
-                paisSeleccionado = Pais.valueOf(userCreate.getPais().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                paisSeleccionado = Pais.PERU;
-            }
-        }
 
         // 2. Registrar entidad Usuario
-        Usuario usuario = usuarioRepository.save(Usuario.builder()
-                .nombre(userCreate.getNombreUsuario())
-                .email(userCreate.getEmail())
-                .passwordHash(encrypt.encryptPassword(userCreate.getPassword()))
-                .pais(paisSeleccionado)
-                .ciudad(userCreate.getCiudad())
-                .rol(Role.USUARIO)
+        Usuario usuario = userRepo.save(Usuario.builder()
+                .nombre(userCreateReq.getNombreUsuario())
+                .email(userCreateReq.getEmail())
+                .passwordHash(encrypt.encryptPassword(userCreateReq.getPassword()))
+                .pais(Pais.valueOf(userCreateReq.getPais()))
+                .ciudad(userCreateReq.getCiudad())
                 .createdAt(Instant.now())
-                .updatedAt(Instant.now())
-                .build());
+                .updatedAt(Instant.now()).build());
 
         // 3. Crear configuración de usuario por defecto
-        configuracionUsuarioRepository.save(ConfiguracionUsuario.builder()
+        configUserRepo.save(ConfiguracionUsuario.builder()
                 .usuario(usuario)
                 .notifSismos(true)
                 .notifConsejos(true)
                 .alertaSonora(false)
                 .magnitudMinima(4.5)
-                .updatedAt(Instant.now())
-                .build());
+                .updatedAt(Instant.now()).build());
 
         // 4. Inicializar árbol de misiones para el nuevo usuario
         sql.inicializarMisionesParaUsuario(usuario.getId());
 
         // 5. Asignar criatura inicial
-        Criatura criatura = criaturaRepository.findById(userCreate.getCriaturaId())
+        Criatura criatura = criaRepo.findById(userCreateReq.getCriaturaId())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Criatura inicial no encontrada con ID: " + userCreate.getCriaturaId()));
+                        "Criatura inicial no encontrada con ID: " + userCreateReq.getCriaturaId()));
 
-        UsuarioCriatura mascota = usuarioCriaturaRepository.save(
+        UsuarioCriatura mascota = userCriaRepo.save(
                 UsuarioCriatura.builder()
                         .usuario(usuario)
                         .criatura(criatura)
@@ -109,29 +87,14 @@ public class UsuarioService {
         String accessToken = refreshTokenService.generarAccessToken(usuario);
         refreshTokenService.guardarToken(usuario, refreshToken);
 
-        // 7. Retornar DTO de respuesta
-        return UsuarioDTO.builder()
-                .id(usuario.getId())
-                .nombreUsuario(usuario.getNombre())
-                .email(usuario.getEmail())
-                .rol(usuario.getRol())
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .dataMascota(CriaturaDataDTO.builder()
-                        .criatura(CriaturaDTO.fromEntity(criatura))
-                        .nivel(mascota.getNivel())
-                        .xpActual(mascota.getXpActual())
-                        .activa(mascota.getActiva())
-                        .build())
-                .build();
+        return TokensDTO.builder().accessToken(accessToken).refreshToken(refreshToken).build();
     }
 
-    // Inicio de sesión de usuario de forma segura
+    // -Inicio de sesión de usuario de forma segura
     @Transactional
-    public UsuarioDTO loginUsuario(LoginRequest loginRequest) {
-        // 1. Buscar usuario por email (mensaje genérico para evitar enumeración
-        // sensible)
-        Usuario usuario = usuarioRepository.findByEmail(loginRequest.getEmail())
+    public TokensDTO loginUsuario(LoginRequest loginRequest) {
+        // 1. Buscar usuario por email (mensaje genérico para evitar enumeración sensible)
+        Usuario usuario = userRepo.findByEmail(loginRequest.getEmail())
                 .orElseThrow(() -> new InvalidCredentialsException());
 
         // 2. Comparar contraseñas hash (SIN exponer contraseñas en logs ni excepciones)
@@ -139,89 +102,73 @@ public class UsuarioService {
             throw new InvalidCredentialsException();
         }
 
-        // 3. Obtener datos de la mascota del usuario
-        UsuarioCriatura mascota = usuarioCriaturaRepository.findByUsuarioId(usuario.getId())
-                .orElse(null);
-
-        CriaturaDTO criaturaDTO = null;
-        CriaturaDataDTO mascotaDTO = null;
-
-        if (mascota != null && mascota.getCriatura() != null) {
-            criaturaDTO = CriaturaDTO.fromEntity(mascota.getCriatura());
-            mascotaDTO = CriaturaDataDTO.builder()
-                    .criatura(criaturaDTO)
-                    .nivel(mascota.getNivel())
-                    .xpActual(mascota.getXpActual())
-                    .activa(mascota.getActiva())
-                    .build();
-        }
-
         // 4. Generar y guardar tokens JWT
         String refreshToken = refreshTokenService.generarRefreshToken(usuario);
         String accessToken = refreshTokenService.generarAccessToken(usuario);
         refreshTokenService.guardarToken(usuario, refreshToken);
 
-        return UsuarioDTO.builder()
-                .id(usuario.getId())
-                .nombreUsuario(usuario.getNombre())
-                .email(usuario.getEmail())
-                .rol(usuario.getRol())
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .dataMascota(mascotaDTO)
-                .build();
+        return TokensDTO.builder().accessToken(accessToken).refreshToken(refreshToken).build();
     }
 
-    // Obtener datos del perfil del usuario autenticado
-    @Transactional(readOnly = true)
-    public UsuarioDTO obtenerPerfil(String authHeader) {
-        Usuario usuario = extraerUsuarioEmailToken(authHeader);
 
-        UsuarioCriatura mascota = usuarioCriaturaRepository.findByUsuarioId(usuario.getId()).orElse(null);
-        CriaturaDataDTO mascotaDTO = null;
-        if (mascota != null && mascota.getCriatura() != null) {
-            mascotaDTO = CriaturaDataDTO.builder()
-                    .criatura(CriaturaDTO.fromEntity(mascota.getCriatura()))
-                    .nivel(mascota.getNivel())
-                    .xpActual(mascota.getXpActual())
-                    .activa(mascota.getActiva())
-                    .build();
-        }
-
-        return UsuarioDTO.builder()
-                .id(usuario.getId())
-                .nombreUsuario(usuario.getNombre())
-                .email(usuario.getEmail())
-                .rol(usuario.getRol())
-                .dataMascota(mascotaDTO)
-                .build();
+    // -Traer Configuracion Usuario
+    public ConfiguracionUsuarioDTO traerConfig(
+            String authHeader
+    ){
+        Usuario user = extraerUsuarioEmailToken(authHeader);
+        ConfiguracionUsuario config = extraerConfigUser(user.getId(),"api/usuario/getConfig");
+        return ConfiguracionUsuarioDTO.fromEntity(config);
     }
 
-    // Modificar datos personales del usuario autenticado
-    @Transactional
-    public UsuarioDTO actualizarPerfil(String authHeader, UpdateUsuarioRequest request) {
-        Usuario usuario = extraerUsuarioEmailToken(authHeader);
+    // -Modificaion Datos Configuracion Usuario
+    public void actualizarConfig(
+            String authHeader,
+            ConfiguracionUsuarioDTO configUserDTO
+    ){
+        Usuario user = extraerUsuarioEmailToken(authHeader);
+        ConfiguracionUsuario configActual = extraerConfigUser(user.getId(),"api/usuario/updateConfig");
+        configActual.setNotifSismos(configUserDTO.getNotifSismos());
+        configActual.setNotifConsejos(configUserDTO.getNotifConsejos());
+        configActual.setAlertaSonora(configUserDTO.getAlertaSonora());
+        configActual.setMagnitudMinima(configUserDTO.getMagnitudMinima());
+        configActual.setUpdatedAt(Instant.now());
+        configUserRepo.save(configActual);
+    }
 
-        if (request.getNombre() != null && !request.getNombre().isBlank()) {
-            usuario.setNombre(request.getNombre().trim());
-        }
-        if (request.getCiudad() != null) {
-            usuario.setCiudad(request.getCiudad().trim());
-        }
-        if (request.getPais() != null) {
-            try {
-                usuario.setPais(Pais.valueOf(request.getPais().toUpperCase()));
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
-        usuario.setUpdatedAt(Instant.now());
+    // -Traer Datos Usuario
+    public UsuarioDTO traerDataUser(
+            String authHeader
+    ){
+        Usuario user = extraerUsuarioEmailToken(authHeader);
+        return UsuarioDTO.fromEntity(user);
+    }
 
-        Usuario guardado = usuarioRepository.save(usuario);
-        return obtenerPerfil(authHeader);
+    // -Modificar Datos Configuracion Usuario
+    public void actualizarDataUser(
+            String authHeader,
+            UsuarioDTO userDTO
+    ){
+        Usuario user = extraerUsuarioEmailToken(authHeader);
+        user.setNombre(userDTO.getNombreUsuario());
+        user.setEmail(userDTO.getEmail());
+        user.setCiudad(userDTO.getCiudad());
+        user.setPais(userDTO.getPais());
+        user.setUpdatedAt(Instant.now());
+        userRepo.save(user);
+    }
+
+
+    // -Metodo Extracion de Configuracion Usuario
+    private ConfiguracionUsuario extraerConfigUser(Long userId, String urlActual){
+        return configUserRepo.findByUsuarioId(userId)
+                .orElseThrow(()-> new GeneralAuthException(
+                        urlActual,
+                        "Usuario No Existente",
+                        "Usuario: "+ userId
+                ));
     }
 
     // Extraer y validar el usuario desde el token JWT en el encabezado
-    // Authorization
     public Usuario extraerUsuarioEmailToken(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new InvalidTokenException("Encabezado de autorización ausente o formato no válido.");
@@ -231,34 +178,9 @@ public class UsuarioService {
             throw new InvalidTokenException("El token JWT ha expirado o no es válido.");
         }
         String email = jwtUtil.extractEmail(token);
-        return usuarioRepository.findByEmail(email)
+        return userRepo.findByEmail(email)
                 .orElseThrow(
                         () -> new UsuarioNotFoundException("Usuario no encontrado con el email provisto en el token."));
     }
 
-    // Obtener un usuario por ID
-    @Transactional(readOnly = true)
-    public UsuarioDTO obtenerPorId(Long id) {
-        Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new UsuarioNotFoundException(id));
-
-        return UsuarioDTO.builder()
-                .id(usuario.getId())
-                .nombreUsuario(usuario.getNombre())
-                .email(usuario.getEmail())
-                .rol(usuario.getRol())
-                .build();
-    }
-
-    // Listar usuarios paginados
-    @Transactional(readOnly = true)
-    public Page<UsuarioDTO> listarUsuarios(Pageable pageable) {
-        return usuarioRepository.findAll(pageable)
-                .map(u -> UsuarioDTO.builder()
-                        .id(u.getId())
-                        .nombreUsuario(u.getNombre())
-                        .email(u.getEmail())
-                        .rol(u.getRol())
-                        .build());
-    }
 }

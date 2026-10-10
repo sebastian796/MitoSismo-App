@@ -1,6 +1,6 @@
 package com.mito.sismo.service;
 
-import com.mito.sismo.dto.entidades.RotateAccesTokenDTO;
+import com.mito.sismo.dto.entidades.TokensDTO;
 import com.mito.sismo.dto.request.TokenRequest;
 import com.mito.sismo.entity.RefreshToken;
 import com.mito.sismo.entity.Usuario;
@@ -92,7 +92,7 @@ public class RefreshTokenService {
 
     // Refrescar Access Token a partir de un Refresh Token válido
     @Transactional
-    public RotateAccesTokenDTO refrescarAccessToken(TokenRequest refreshTokenRequest) {
+    public TokensDTO refrescarAccessToken(TokenRequest refreshTokenRequest) {
         RefreshToken refreshTokenAntiguo = validateRefreshToken(refreshTokenRequest.getToken())
                 .orElseThrow(() -> new InvalidTokenException("El refresh token proporcionado no es válido o ha expirado."));
 
@@ -101,7 +101,7 @@ public class RefreshTokenService {
         String nuevoRefreshToken = generarRefreshToken(refreshTokenAntiguo.getUsuario());
         rotateToken(refreshTokenAntiguo, nuevoRefreshToken);
 
-        return RotateAccesTokenDTO.builder()
+        return TokensDTO.builder()
                 .accessToken(nuevoAccessToken)
                 .refreshToken(nuevoRefreshToken)
                 .build();

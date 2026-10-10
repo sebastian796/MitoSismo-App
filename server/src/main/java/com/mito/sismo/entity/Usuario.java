@@ -1,6 +1,7 @@
 package com.mito.sismo.entity;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.mito.sismo.dto.entidades.UsuarioDTO;
 import com.mito.sismo.entity.enums.Pais;
 import com.mito.sismo.entity.enums.Role;
 import jakarta.persistence.*;
@@ -49,7 +50,8 @@ public class Usuario {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    private Pais pais;
+    @Builder.Default
+    private Pais pais = Pais.PERU;
 
     @Builder.Default
     @Column(name = "created_at", updatable = false)
@@ -78,5 +80,6 @@ public class Usuario {
 
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<UsuarioMochilaItem> mochilaItems = new HashSet<>();
+
 
 }

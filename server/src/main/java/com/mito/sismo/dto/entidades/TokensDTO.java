@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class RotateAccesTokenDTO {
+public class TokensDTO {
     private String accessToken;
     private String refreshToken;
 }

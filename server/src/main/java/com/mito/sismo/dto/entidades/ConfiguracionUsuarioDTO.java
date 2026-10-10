@@ -17,8 +17,6 @@ import java.time.Instant;
 @AllArgsConstructor
 @Builder
 @JsonPropertyOrder({
-        "id",
-        "usuarioId",
         "notifSismos",
         "notifConsejos",
         "alertaSonora",
@@ -27,8 +25,6 @@ import java.time.Instant;
 })
 public class ConfiguracionUsuarioDTO {
 
-    private Long id;
-    private Long usuarioId;
     private Boolean notifSismos;
     private Boolean notifConsejos;
     private Boolean alertaSonora;
@@ -38,8 +34,6 @@ public class ConfiguracionUsuarioDTO {
     public static ConfiguracionUsuarioDTO fromEntity(ConfiguracionUsuario conf) {
         if (conf == null) return null;
         return ConfiguracionUsuarioDTO.builder()
-                .id(conf.getId())
-                .usuarioId(conf.getUsuario() != null ? conf.getUsuario().getId() : null)
                 .notifSismos(conf.getNotifSismos())
                 .notifConsejos(conf.getNotifConsejos())
                 .alertaSonora(conf.getAlertaSonora())
