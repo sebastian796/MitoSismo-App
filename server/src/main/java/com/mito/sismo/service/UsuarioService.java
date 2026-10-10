@@ -121,6 +121,7 @@ public class UsuarioService {
     }
 
     // -Modificaion Datos Configuracion Usuario
+    @Transactional
     public void actualizarConfig(
             String authHeader,
             ConfiguracionUsuarioDTO configUserDTO
@@ -136,6 +137,7 @@ public class UsuarioService {
     }
 
     // -Traer Datos Usuario
+    @Transactional(readOnly = true)
     public UsuarioDTO traerDataUser(
             String authHeader
     ){
@@ -144,6 +146,7 @@ public class UsuarioService {
     }
 
     // -Modificar Datos Configuracion Usuario
+    @Transactional
     public void actualizarDataUser(
             String authHeader,
             UsuarioDTO userDTO
@@ -159,6 +162,7 @@ public class UsuarioService {
 
 
     // -Metodo Extracion de Configuracion Usuario
+    @Transactional(readOnly = true)
     private ConfiguracionUsuario extraerConfigUser(Long userId, String urlActual){
         return configUserRepo.findByUsuarioId(userId)
                 .orElseThrow(()-> new GeneralAuthException(
@@ -169,6 +173,7 @@ public class UsuarioService {
     }
 
     // Extraer y validar el usuario desde el token JWT en el encabezado
+    @Transactional
     public Usuario extraerUsuarioEmailToken(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new InvalidTokenException("Encabezado de autorización ausente o formato no válido.");

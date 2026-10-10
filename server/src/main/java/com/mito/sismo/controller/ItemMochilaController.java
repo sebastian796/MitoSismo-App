@@ -17,15 +17,15 @@ import java.util.List;
 @RequestMapping("api/itemMochila")
 public class ItemMochilaController {
 
-    private final ItemMochilaService itemMochilaService;
+    private final ItemMochilaService itemMochiService;
 
-    // Devolver item de mochila por usuario
+    // Devolver Item de Mochila Usuario
     @GetMapping("/listItem")
     ResponseEntity<List<ItemMochilaDTO>> getItemMochila(
-            @RequestHeader
+            @RequestHeader("Authorization")
             String authHeader
     ){
-        List<ItemMochilaDTO> listItems = itemMochilaService.getItemsMochila(authHeader);
+        List<ItemMochilaDTO> listItems = itemMochiService.getItemsMochila(authHeader);
         return ResponseEntity.ok(listItems);
     }
 

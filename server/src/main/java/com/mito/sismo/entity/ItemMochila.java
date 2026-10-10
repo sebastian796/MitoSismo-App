@@ -29,9 +29,6 @@ public class ItemMochila {
     private Boolean obligatorio = true;
 
     @Builder.Default
-    private Integer orden = 0;
-
-    @Builder.Default
     @OneToMany(mappedBy = "itemMochila", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<UsuarioMochilaItem> usuarios = new HashSet<>();
 }

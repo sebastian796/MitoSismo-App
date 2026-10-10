@@ -23,16 +23,16 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ItemMochilaService {
 
-    private final ItemMochilaRepository itemMochilaRepository;
-    private final UsuarioMochilaItemRepository userMochilaItemsRepository;
+    private final ItemMochilaRepository itemMochiRepo;
+    private final UsuarioMochilaItemRepository userMochiItemRepo;
     private final UsuarioService userService;
 
     // Obtener catálogo completo indicando cuáles ítems tiene marcados el usuario autenticado
     @Transactional(readOnly = true)
     public List<ItemMochilaDTO> getItemsMochila(String authHeader) {
         Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
-        List<ItemMochila> listItems = itemMochilaRepository.findAllByOrderByOrdenAsc();
-        List<UsuarioMochilaItem> listItemsUsuario = userMochilaItemsRepository.findByUsuarioId(usuario.getId());
+        List<ItemMochila> listItems = itemMochiRepo.findAllByOrderByOrdenAsc();
+        List<UsuarioMochilaItem> listItemsUsuario = userMochiItemRepo.findByUsuarioId(usuario.getId());
 
         // Mapa de itemId -> estado marcado
         Map<Integer, Boolean> marcasMap = listItemsUsuario.stream()
@@ -47,13 +47,36 @@ public class ItemMochilaService {
                 .collect(Collectors.toList());
     }
 
+    // Obtener catàlogo de Items Guardados
+    @Transactional(readOnly = true)
+    public List<ItemMochilaDTO> getItemMochilaGuardado(String authHeader){
+        return userMochiItemRepo.findAll().stream()
+                .map(item -> ItemMochilaDTO.fromEntity(item.getItemMochila())).toList();
+    }
+
+    // Obtener catalogo de Items No Guardados
+    @Transactional(readOnly = true)
+    public List<ItemMochilaDTO> getItemMochilaNoGuardado(String authHeader){
+        Usuario user = userService.extraerUsuarioEmailToken(authHeader);
+        Map<Integer,Boolean> itemUser = userMochiItemRepo.findByUsuarioId(user.getId())
+                .stream().collect(Collectors.toMap(
+                        item -> item.getItemMochila().getId(),
+                        item -> Boolean.TRUE.equals(item.getMarcado()),
+                        (existente,reemplazo) -> existente
+                ));
+        return itemMochiRepo.findAll().stream()
+                .filter(item ->  !itemUser.containsKey(item.getId()))
+                .map(ItemMochilaDTO::fromEntity).toList();
+    }
+
+
     // Guardar / Sincronizar los ítems marcados por el usuario en su mochila
     @Transactional
     public void saveItemsMochilaNuevos(String authHeader, List<ItemMochilaRequest> listItemNueva) {
         Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
 
         // 1. Obtener registros actuales del usuario
-        List<UsuarioMochilaItem> actuales = userMochilaItemsRepository.findByUsuarioId(usuario.getId());
+        List<UsuarioMochilaItem> actuales = userMochiItemRepo.findByUsuarioId(usuario.getId());
 
         // 2. Mapear por item_mochila_id para acceso rápido
         Map<Integer, UsuarioMochilaItem> mapaActuales = actuales.stream()
@@ -74,10 +97,10 @@ public class ItemMochilaService {
                 // Actualizar estado marcado existente
                 UsuarioMochilaItem existente = mapaActuales.get(itemId);
                 existente.setMarcado(estaMarcado);
-                userMochilaItemsRepository.save(existente);
+                userMochiItemRepo.save(existente);
             } else if (estaMarcado) {
                 // Si está marcado y aún no existe registro para el usuario, crearlo
-                ItemMochila item = itemMochilaRepository.findById(itemId)
+                ItemMochila item = itemMochiRepo.findById(itemId)
                         .orElseThrow(() -> new ResourceNotFoundException("Ítem de mochila no encontrado con ID: " + itemId));
 
                 UsuarioMochilaItem nuevo = UsuarioMochilaItem.builder()
@@ -86,54 +109,10 @@ public class ItemMochilaService {
                         .marcado(true)
                         .build();
 
-                userMochilaItemsRepository.save(nuevo);
+                userMochiItemRepo.save(nuevo);
             }
         }
     }
 
-    // Listar todos los ítems del catálogo general
-    @Transactional(readOnly = true)
-    public List<ItemMochilaDTO> listarCatalogo() {
-        return itemMochilaRepository.findAllByOrderByOrdenAsc().stream()
-                .map(ItemMochilaDTO::fromEntity)
-                .collect(Collectors.toList());
-    }
 
-    // Obtener un ítem de catálogo por su ID
-    @Transactional(readOnly = true)
-    public ItemMochilaDTO obtenerPorId(Integer id) {
-        ItemMochila item = itemMochilaRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Ítem de mochila no encontrado con ID: " + id));
-        return ItemMochilaDTO.fromEntity(item);
-    }
-
-    // Crear un nuevo ítem en el catálogo
-    @Transactional
-    public ItemMochilaDTO crearItem(ItemMochila item) {
-        ItemMochila guardado = itemMochilaRepository.save(item);
-        return ItemMochilaDTO.fromEntity(guardado);
-    }
-
-    // Modificar un ítem existente en el catálogo
-    @Transactional
-    public ItemMochilaDTO actualizarItem(Integer id, ItemMochila datosActualizados) {
-        ItemMochila existente = itemMochilaRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Ítem de mochila no encontrado con ID: " + id));
-
-        existente.setNombre(datosActualizados.getNombre());
-        existente.setDescripcion(datosActualizados.getDescripcion());
-        existente.setObligatorio(datosActualizados.getObligatorio());
-        existente.setOrden(datosActualizados.getOrden());
-
-        return ItemMochilaDTO.fromEntity(itemMochilaRepository.save(existente));
-    }
-
-    // Eliminar un ítem del catálogo
-    @Transactional
-    public void eliminarItem(Integer id) {
-        if (!itemMochilaRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Ítem de mochila no encontrado con ID: " + id);
-        }
-        itemMochilaRepository.deleteById(id);
-    }
 }

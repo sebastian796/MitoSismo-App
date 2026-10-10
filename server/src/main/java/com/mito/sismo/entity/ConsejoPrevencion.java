@@ -19,7 +19,7 @@ public class ConsejoPrevencion {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "fase_id", nullable = false)
     private FasePrevencion fase;
 

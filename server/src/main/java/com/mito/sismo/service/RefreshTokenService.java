@@ -28,6 +28,7 @@ public class RefreshTokenService {
     private final JwtUtil jwtUtil;
 
     // Guardar nuevo refresh token en la base de datos
+    @Transactional
     public RefreshToken guardarToken(Usuario usuario, String jwtToken) {
         RefreshToken refreshToken = RefreshToken.builder()
                 .usuario(usuario)
@@ -67,6 +68,7 @@ public class RefreshTokenService {
     }
 
     // Revocar un refresh token específico
+    @Transactional
     public void revokeToken(RefreshToken refreshToken) {
         refreshToken.setRevoked(true);
         refreshTokenRepository.save(refreshToken);

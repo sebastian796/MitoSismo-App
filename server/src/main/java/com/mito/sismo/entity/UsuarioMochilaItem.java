@@ -25,7 +25,7 @@ public class UsuarioMochilaItem {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "item_mochila_id", nullable = false)
     private ItemMochila itemMochila;
 
