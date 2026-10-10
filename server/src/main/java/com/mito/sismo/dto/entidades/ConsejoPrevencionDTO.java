@@ -15,25 +15,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @JsonPropertyOrder({
-        "id",
         "consejo",
         "orden",
         "faseId"
 })
 public class ConsejoPrevencionDTO {
 
-    private Integer id;
-    private String consejo;
-    private Integer orden;
-    private Integer faseId;
 
-    public static ConsejoPrevencionDTO fromEntity(ConsejoPrevencion entidad) {
-        if (entidad == null) return null;
-        return ConsejoPrevencionDTO.builder()
-                .id(entidad.getId())
-                .consejo(entidad.getConsejo())
-                .orden(entidad.getOrden())
-                .faseId(entidad.getFase() != null ? entidad.getFase().getId() : null)
-                .build();
-    }
 }

@@ -2,7 +2,6 @@ package com.mito.sismo.controller;
 
 import com.mito.sismo.dto.entidades.ConsejoPrevencionDTO;
 import com.mito.sismo.service.ConsejoPrevencionService;
-import com.mito.sismo.service.FasePrevencionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

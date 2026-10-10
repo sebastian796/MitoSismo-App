@@ -16,34 +16,28 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @JsonPropertyOrder({
-        "id",
         "nombre",
         "numero",
         "descripcion",
         "icono",
         "pais",
-        "orden"
 })
 public class ContactoEmergenciaDTO {
 
-    private Integer id;
     private String nombre;
     private String numero;
     private String descripcion;
     private String icono;
     private Pais pais;
-    private Integer orden;
 
     public static ContactoEmergenciaDTO fromEntity(ContactoEmergencia contacto) {
         if (contacto == null) return null;
         return ContactoEmergenciaDTO.builder()
-                .id(contacto.getId())
                 .nombre(contacto.getNombre())
                 .numero(contacto.getNumero())
                 .descripcion(contacto.getDescripcion())
                 .icono(contacto.getIcono())
                 .pais(contacto.getPais())
-                .orden(contacto.getOrden())
                 .build();
     }
 }

@@ -29,6 +29,4 @@ public class ContactoEmergencia {
     @Builder.Default
     private Pais pais = Pais.PERU;
 
-    @Builder.Default
-    private Integer orden = 0;
 }
