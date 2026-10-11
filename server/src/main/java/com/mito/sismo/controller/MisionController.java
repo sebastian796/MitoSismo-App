@@ -1,38 +1,36 @@
 package com.mito.sismo.controller;
+
 import com.mito.sismo.dto.entidades.MisionDTO;
 import com.mito.sismo.entity.InfoMisionDTO;
-import com.mito.sismo.entity.UsuarioMision;
 import com.mito.sismo.service.MisionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/misiones")
 public class MisionController {
     private final MisionService misionService;
+
     @GetMapping("/")
     ResponseEntity<List<MisionDTO>> traerListaMisiones(
-            @RequestHeader("Authorization")
-            String authHeader
-    ){
+            @RequestHeader("Authorization") String authHeader) {
         List<MisionDTO> listaMisiones = misionService.traerListaMisiones(authHeader);
         return ResponseEntity.ok(listaMisiones);
     }
+
     @GetMapping("/completas")
     ResponseEntity<List<MisionDTO>> getListMissionComplet(
-            @RequestHeader("Authorization")
-            String authHeader
-    ){
+            @RequestHeader("Authorization") String authHeader) {
         List<MisionDTO> listMissionComplet = misionService.getListMissionComplet(authHeader);
         return ResponseEntity.ok(listMissionComplet);
     }
+
     @GetMapping("/incompleta")
     ResponseEntity<List<MisionDTO>> getListMissionIncomplet(
-            @RequestHeader("Authorization")
-            String authHeader
-    ){
+            @RequestHeader("Authorization") String authHeader) {
         List<MisionDTO> listMissionIncomplet = misionService.getListMissionIncomplet(authHeader);
         return ResponseEntity.ok(listMissionIncomplet);
     }
@@ -40,11 +38,8 @@ public class MisionController {
     // Marcar Mision Completa
     @PostMapping("/completada")
     ResponseEntity<InfoMisionDTO> completarMision(
-            @RequestParam
-            Long idMision,
-            @RequestHeader("Authorization")
-            String authHeader
-    ){
+            @RequestParam Long idMision,
+            @RequestHeader("Authorization") String authHeader) {
         InfoMisionDTO completado = misionService.marcarCompletado(idMision, authHeader);
         return ResponseEntity.ok(completado);
     }

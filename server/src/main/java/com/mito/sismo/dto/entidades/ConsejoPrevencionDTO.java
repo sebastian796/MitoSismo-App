@@ -2,7 +2,6 @@ package com.mito.sismo.dto.entidades;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.mito.sismo.entity.ConsejoPrevencion;
-import com.mito.sismo.entity.FasePrevencion;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

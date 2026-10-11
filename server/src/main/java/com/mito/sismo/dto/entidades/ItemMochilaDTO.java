@@ -2,13 +2,10 @@ package com.mito.sismo.dto.entidades;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.mito.sismo.entity.ItemMochila;
-import com.mito.sismo.entity.UsuarioMochilaItem;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.Instant;
 
 @Builder
 @Data

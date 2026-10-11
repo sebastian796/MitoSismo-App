@@ -1,7 +1,6 @@
 package com.mito.sismo.dto.entidades;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.mito.sismo.entity.Criatura;
-import com.mito.sismo.entity.UsuarioCriatura;
 import com.mito.sismo.entity.enums.Elemento;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -2,9 +2,7 @@ package com.mito.sismo.entity;
 import com.mito.sismo.entity.enums.ClaveFase;
 import jakarta.persistence.*;
 import lombok.*;
-import java.io.Serializable;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
 @Entity
 @Table(name = "fases_prevencion")

@@ -1,6 +1,4 @@
 package com.mito.sismo.entity;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.mito.sismo.dto.entidades.UsuarioDTO;
 import com.mito.sismo.entity.enums.Pais;
 import com.mito.sismo.entity.enums.Role;
 import jakarta.persistence.*;

@@ -71,7 +71,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Criatura inicial no encontrada con ID: " + userCreateReq.getCriaturaId()));
 
-        UsuarioCriatura mascota = userCriaRepo.save(
+        userCriaRepo.save(
                 UsuarioCriatura.builder()
                         .usuario(usuario)
                         .criatura(criatura)

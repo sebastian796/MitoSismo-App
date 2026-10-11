@@ -1,14 +1,8 @@
 package com.mito.sismo.service;
 
 import com.mito.sismo.dto.entidades.ConsejoPrevencionDTO;
-import com.mito.sismo.dto.entidades.ContactoEmergenciaDTO;
-import com.mito.sismo.entity.ConsejoPrevencion;
-import com.mito.sismo.entity.ContactoEmergencia;
-import com.mito.sismo.entity.FasePrevencion;
 import com.mito.sismo.entity.enums.ClaveFase;
-import com.mito.sismo.exception.ResourceNotFoundException;
 import com.mito.sismo.repository.ConsejoPrevencionRepository;
-import com.mito.sismo.repository.FasePrevencionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +18,6 @@ import java.util.stream.Collectors;
 public class ConsejoPrevencionService {
 
     private final ConsejoPrevencionRepository consejoPrevenRepo;
-    private final FasePrevencionRepository fasePrevencionRepository;
 
    // -Traer Consejos
     @Transactional(readOnly = true)
