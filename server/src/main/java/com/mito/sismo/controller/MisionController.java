@@ -1,5 +1,7 @@
 package com.mito.sismo.controller;
 import com.mito.sismo.dto.entidades.MisionDTO;
+import com.mito.sismo.entity.InfoMisionDTO;
+import com.mito.sismo.entity.UsuarioMision;
 import com.mito.sismo.service.MisionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -34,4 +36,17 @@ public class MisionController {
         List<MisionDTO> listMissionIncomplet = misionService.getListMissionIncomplet(authHeader);
         return ResponseEntity.ok(listMissionIncomplet);
     }
+
+    // Marcar Mision Completa
+    @PostMapping("/completada")
+    ResponseEntity<InfoMisionDTO> completarMision(
+            @RequestParam
+            Long idMision,
+            @RequestHeader("Authorization")
+            String authHeader
+    ){
+        InfoMisionDTO completado = misionService.marcarCompletado(idMision, authHeader);
+        return ResponseEntity.ok(completado);
+    }
+
 }

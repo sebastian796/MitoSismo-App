@@ -1,8 +1,12 @@
 package com.mito.sismo.entity;
-import ch.qos.logback.core.joran.spi.DefaultClass;
+
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
+
+/**
+ * Entidad que vincula a un usuario con su criatura / mascota elegida y guarda su progreso de nivel y XP.
+ */
 @Entity
 @Table(name = "usuario_criaturas")
 @Getter
@@ -22,8 +26,10 @@ public class UsuarioCriatura {
     private Criatura criatura;
     @Builder.Default
     private Integer nivel = 1;
+
     @Builder.Default
     private Integer xpActual = 0;
+
     @Builder.Default
     private Boolean activa = true;
     @Builder.Default

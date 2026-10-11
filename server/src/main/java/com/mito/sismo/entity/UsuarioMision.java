@@ -35,4 +35,6 @@ public class UsuarioMision {
     private Boolean xpOtorgada = false;
     @Column(name = "evidencia_url", columnDefinition = "text")
     private String evidenciaUrl;
+
 }
+
