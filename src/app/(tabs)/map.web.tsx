@@ -6,7 +6,6 @@ import 'leaflet/dist/leaflet.css';
 import { Colors } from '../../constants/theme';
 import { fetchRecentEarthquakes } from '../../services/earthquakeService';
 import type { Quake } from '../../types/earthquake';
-
 const colors = Colors;
 const FILTERS = [
   { label: 'Todos', value: 0 },
@@ -14,14 +13,12 @@ const FILTERS = [
   { label: 'M≥5', value: 5 },
   { label: 'M≥6', value: 6 },
 ];
-
 function magnitudeColor(magnitude: number) {
   if (magnitude >= 6) return '#8B1E1E';
   if (magnitude >= 5) return Colors.magFuerte.dot;
   if (magnitude >= 4) return Colors.gold;
   return Colors.magLeve.dot;
 }
-
 export default function MapWebScreen() {
   const mapElementRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -30,12 +27,11 @@ export default function MapWebScreen() {
   const [minimumMagnitude, setMinimumMagnitude] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
   const loadEarthquakes = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      setQuakes(await fetchRecentEarthquakes(100, 'Perú'));
+      setQuakes(await fetchRecentEarthquakes(10));
     } catch (err) {
       console.error('Error obteniendo sismos:', err);
       setError('No se pudieron cargar los sismos. Revisa tu conexión e inténtalo nuevamente.');
@@ -43,9 +39,11 @@ export default function MapWebScreen() {
       setLoading(false);
     }
   }, []);
-
-  useEffect(() => { loadEarthquakes(); }, [loadEarthquakes]);
-
+  useEffect(() => {
+    loadEarthquakes();
+    const timer = setInterval(() => { void loadEarthquakes(); }, 60_000);
+    return () => clearInterval(timer);
+  }, [loadEarthquakes]);
   useEffect(() => {
     let cancelled = false;
     async function createMap() {
@@ -68,12 +66,10 @@ export default function MapWebScreen() {
       layerRef.current = null;
     };
   }, []);
-
   const visibleQuakes = useMemo(
     () => quakes.filter((quake) => quake.mag >= minimumMagnitude),
     [quakes, minimumMagnitude],
   );
-
   useEffect(() => {
     let cancelled = false;
     async function updateMarkers() {
@@ -96,14 +92,13 @@ export default function MapWebScreen() {
     updateMarkers();
     return () => { cancelled = true; };
   }, [visibleQuakes]);
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}><Text style={styles.backText}>‹</Text></Pressable>
         <View style={styles.headerText}>
           <Text style={styles.title}>Mapa de sismos</Text>
-          <Text style={styles.subtitle}>Visualización de actividad sísmica</Text>
+          <Text style={styles.subtitle}>Últimos 10 sismos de América Latina</Text>
         </View>
         <Pressable onPress={loadEarthquakes} style={styles.refreshButton} disabled={loading}><Text style={styles.refreshText}>↻</Text></Pressable>
       </View>
@@ -124,7 +119,6 @@ export default function MapWebScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },

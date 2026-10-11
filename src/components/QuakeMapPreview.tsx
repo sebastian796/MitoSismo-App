@@ -3,12 +3,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { Colors, Radii, Spacing, Typography } from '../constants/theme';
 import type { Quake } from '../types/earthquake';
-
 type Props = {
   quake: Quake;
   markerColor?: string;
 };
-
 export default function QuakeMapPreview({ quake, markerColor = Colors.primary }: Props) {
   return (
     <View style={styles.wrapper}>
@@ -40,7 +38,6 @@ export default function QuakeMapPreview({ quake, markerColor = Colors.primary }:
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   wrapper: {
     height: 280,
