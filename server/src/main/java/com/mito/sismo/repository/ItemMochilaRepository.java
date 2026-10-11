@@ -10,5 +10,4 @@ public interface ItemMochilaRepository extends JpaRepository<ItemMochila, Intege
 
     Optional<ItemMochila> findByNombre(String nombre);
 
-    List<ItemMochila> findAllByOrderByOrdenAsc();
 }

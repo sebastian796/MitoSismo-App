@@ -31,7 +31,7 @@ public class ItemMochilaService {
     @Transactional(readOnly = true)
     public List<ItemMochilaDTO> getItemsMochila(String authHeader) {
         Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
-        List<ItemMochila> listItems = itemMochiRepo.findAllByOrderByOrdenAsc();
+        List<ItemMochila> listItems = itemMochiRepo.findAll();
         List<UsuarioMochilaItem> listItemsUsuario = userMochiItemRepo.findByUsuarioId(usuario.getId());
 
         // Mapa de itemId -> estado marcado
