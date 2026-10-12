@@ -4,25 +4,20 @@ import type { Map as LeafletMap, CircleMarker } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Colors, Radii, Spacing, Typography } from '../constants/theme';
 import type { Quake } from '../types/earthquake';
-
 type Props = {
   quake: Quake;
   markerColor?: string;
 };
-
 export default function QuakeMapPreview({ quake, markerColor = Colors.primary }: Props) {
   const mapElementRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markerRef = useRef<CircleMarker | null>(null);
-
   useEffect(() => {
     let cancelled = false;
-
     async function createMap() {
       if (!mapElementRef.current || mapRef.current) return;
       const leaflet = await import('leaflet');
       if (cancelled || !mapElementRef.current) return;
-
       const map = leaflet.map(mapElementRef.current, {
         center: [quake.lat, quake.lng],
         zoom: 7,
@@ -30,14 +25,12 @@ export default function QuakeMapPreview({ quake, markerColor = Colors.primary }:
         maxZoom: 18,
         scrollWheelZoom: true,
       });
-
       leaflet
         .tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© OpenStreetMap contributors',
           maxZoom: 19,
         })
         .addTo(map);
-
       markerRef.current = leaflet
         .circleMarker([quake.lat, quake.lng], {
           radius: Math.max(9, Math.min(18, 6 + quake.mag * 1.5)),
@@ -50,13 +43,10 @@ export default function QuakeMapPreview({ quake, markerColor = Colors.primary }:
           `<strong>M ${quake.mag.toFixed(1)}</strong><br/>${quake.place}<br/>Profundidad: ${quake.depth.toFixed(1)} km`,
         )
         .addTo(map);
-
       mapRef.current = map;
       window.setTimeout(() => map.invalidateSize(), 0);
     }
-
     createMap();
-
     return () => {
       cancelled = true;
       mapRef.current?.remove();
@@ -64,7 +54,6 @@ export default function QuakeMapPreview({ quake, markerColor = Colors.primary }:
       markerRef.current = null;
     };
   }, [quake, markerColor]);
-
   return (
     <View style={styles.wrapper}>
       <View ref={mapElementRef} style={styles.map} />
@@ -77,7 +66,6 @@ export default function QuakeMapPreview({ quake, markerColor = Colors.primary }:
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   wrapper: {
     height: 280,

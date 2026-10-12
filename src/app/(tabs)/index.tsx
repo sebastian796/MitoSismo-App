@@ -48,9 +48,7 @@ export default function HomeScreen() {
     else setLoading(true);
     setError(null);
     try {
-      const data = await fetchRecentEarthquakes(15, c, {
-        forceRefresh: isRefresh,
-      });
+      const data = await fetchRecentEarthquakes(10);
       if (id !== requestId.current) return;
       setQuakes(data);
     } catch (e) {
@@ -68,6 +66,10 @@ export default function HomeScreen() {
   }, []);
   useEffect(() => {
     load(country);
+  }, [country, load]);
+  useEffect(() => {
+    const timer = setInterval(() => { void load(country, true); }, 60_000);
+    return () => clearInterval(timer);
   }, [country, load]);
   const latest = quakes[0];
   const info = latest ? magInfo(latest.mag) : null;

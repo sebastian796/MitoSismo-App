@@ -37,8 +37,8 @@ export default function RecentScreen() {
         setError(null);
         const data =
           countryFilter === 'Todos'
-            ? await fetchRecentEarthquakes(20)
-            : await fetchRecentEarthquakes(20, countryFilter);
+            ? await fetchRecentEarthquakes(10)
+            : await fetchRecentEarthquakes(10, countryFilter);
         setQuakes(data);
       } catch (err) {
         console.error('Error al cargar sismos:', err);
@@ -48,6 +48,8 @@ export default function RecentScreen() {
       }
     }
     loadEarthquakes();
+    const timer = setInterval(() => { void loadEarthquakes(); }, 60_000);
+    return () => clearInterval(timer);
   }, [countryFilter]);
   const filteredQuakes = quakes.filter((q) => {
     const matchesSearch =

@@ -8,28 +8,24 @@ import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
 import { fetchRecentEarthquakes } from '../../services/earthquakeService';
 import type { Quake } from '../../types/earthquake';
 import { useCallback, useEffect } from 'react';
-
 const INITIAL_REGION = {
   latitude: -9.19,
   longitude: -75.02,
   latitudeDelta: 14,
   longitudeDelta: 12,
 };
-
 const FILTERS = [
   { label: 'Todos', value: 0 },
   { label: 'M≥4', value: 4 },
   { label: 'M≥5', value: 5 },
   { label: 'M≥6', value: 6 },
 ];
-
 function magnitudeColor(magnitude: number) {
   if (magnitude >= 6) return '#8B1E1E';
   if (magnitude >= 5) return Colors.magFuerte.dot;
   if (magnitude >= 4) return Colors.gold;
   return Colors.magLeve.dot;
 }
-
 export default function MapScreen() {
   const router = useRouter();
   const [quakes, setQuakes] = useState<Quake[]>([]);
@@ -37,12 +33,11 @@ export default function MapScreen() {
   const [selected, setSelected] = useState<Quake | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
   const loadEarthquakes = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      setQuakes(await fetchRecentEarthquakes(100, 'Perú'));
+      setQuakes(await fetchRecentEarthquakes(10));
     } catch (err) {
       console.error('Error obteniendo sismos:', err);
       setError('No se pudieron cargar los sismos. Revisa tu conexión e inténtalo nuevamente.');
@@ -50,16 +45,15 @@ export default function MapScreen() {
       setLoading(false);
     }
   }, []);
-
   useEffect(() => {
     loadEarthquakes();
+    const timer = setInterval(() => { void loadEarthquakes(); }, 60_000);
+    return () => clearInterval(timer);
   }, [loadEarthquakes]);
-
   const visibleQuakes = useMemo(
     () => quakes.filter((quake) => quake.mag >= minimumMagnitude),
     [quakes, minimumMagnitude],
   );
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -68,13 +62,12 @@ export default function MapScreen() {
         </Pressable>
         <View style={styles.headerText}>
           <Text style={styles.title}>Mapa de sismos</Text>
-          <Text style={styles.subtitle}>Actividad sísmica en la región del Perú</Text>
+          <Text style={styles.subtitle}>Últimos 10 sismos de América Latina</Text>
         </View>
         <Pressable onPress={loadEarthquakes} style={styles.refreshButton} disabled={loading}>
           <Text style={styles.refreshText}>↻</Text>
         </Pressable>
       </View>
-
       <View style={styles.filters}>
         {FILTERS.map((filter) => (
           <Pressable
@@ -89,7 +82,6 @@ export default function MapScreen() {
         ))}
         <Text style={styles.resultCount}>{visibleQuakes.length} sismos</Text>
       </View>
-
       <View style={styles.mapContainer}>
         <MapView style={styles.map} initialRegion={INITIAL_REGION}>
           {visibleQuakes.map((quake) => (
@@ -113,7 +105,6 @@ export default function MapScreen() {
           ))}
         </MapView>
       </View>
-
       {loading ? (
         <View style={styles.statusBox}>
           <ActivityIndicator color={Colors.gold} />
@@ -149,7 +140,6 @@ export default function MapScreen() {
           </ScrollView>
         </View>
       )}
-
       {selected && (
         <Pressable style={styles.selectedCard} onPress={() => router.push(`/quake/${selected.id}`)}>
           <View style={styles.selectedHeader}>
@@ -167,7 +157,6 @@ export default function MapScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.surface },
