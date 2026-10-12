@@ -1,8 +1,13 @@
-import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
-import { Colors } from '../../constants/theme';
+import { Ionicons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import { Platform } from "react-native";
+
+import { Colors } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
+
 export default function TabsLayout() {
+  const { user, requireAuth } = useAuth();
+
   return (
     <Tabs
       screenOptions={{
@@ -13,56 +18,68 @@ export default function TabsLayout() {
           backgroundColor: Colors.white,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 84 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          height: Platform.OS === "ios" ? 84 : 64,
+          paddingBottom: Platform.OS === "ios" ? 24 : 8,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '600',
+          fontWeight: "600",
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Inicio',
+          title: "Inicio",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size - 2} color={color} />
           ),
         }}
       />
+
       <Tabs.Screen
         name="map"
         options={{
-          title: 'Mapa',
+          title: "Mapa",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="map" size={size - 2} color={color} />
           ),
         }}
       />
+
       <Tabs.Screen
         name="recent"
         options={{
-          title: 'Sismos',
+          title: "Sismos",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="pulse" size={size - 2} color={color} />
           ),
         }}
       />
+
       <Tabs.Screen
         name="missions"
+        listeners={{
+          tabPress: (event) => {
+            if (!user) {
+              event.preventDefault();
+              requireAuth();
+            }
+          },
+        }}
         options={{
-          title: 'Misiones',
+          title: "Misiones",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="star" size={size - 2} color={color} />
           ),
         }}
       />
+
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Perfil',
+          title: "Perfil",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size - 2} color={color} />
           ),

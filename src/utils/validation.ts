@@ -11,8 +11,8 @@ export function validateEmail(value: string): string | undefined {
 export function validateUsername(value: string): string | undefined {
   const v = value.trim();
   if (!v) return "Ingresa un nombre de usuario.";
-  if (v.length < 3 || v.length > 20)
-    return "Debe tener entre 3 y 20 caracteres.";
+  if (v.length < 3 || v.length > 50)
+    return "Debe tener entre 3 y 50 caracteres.";
   return undefined;
 }
 export function validatePassword(value: string): string | undefined {

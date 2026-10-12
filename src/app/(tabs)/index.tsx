@@ -11,8 +11,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Card, Ignis, MagBadge } from "../../components";
-import { ignisCreature } from "../../constants/data";
+import { Card, MagBadge } from "../../components";
+import { HomeCreatureCard } from "../../components/creatures/CreatureCards";
 import {
   Colors,
   Radii,
@@ -31,14 +31,7 @@ function greeting() {
   if (h < 19) return "Buenas tardes";
   return "Buenas noches";
 }
-function ignisMessage(mag?: number) {
-  if (mag === undefined)
-    return "Estoy atento al suelo. ¡Buen momento para revisar tu mochila!";
-  if (mag >= 5)
-    return "¡Hubo un sismo fuerte! Revisa tu mochila y tu plan familiar.";
-  if (mag >= 4) return "Sismo moderado reciente. Repasa tus zonas seguras.";
-  return "Suelo en calma. ¡Buen momento para completar una misión!";
-}
+
 export default function HomeScreen() {
   const router = useRouter();
   const { settings } = useNotificationSettings();
@@ -48,14 +41,16 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
-  const { user } = useAuth();
+  const { user, requireAuth } = useAuth();
   const load = useCallback(async (c: string, isRefresh = false) => {
     const id = ++requestId.current;
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
     try {
-      const data = await fetchRecentEarthquakes(15, c);
+      const data = await fetchRecentEarthquakes(15, c, {
+        forceRefresh: isRefresh,
+      });
       if (id !== requestId.current) return;
       setQuakes(data);
     } catch (e) {
@@ -103,7 +98,14 @@ export default function HomeScreen() {
           </View>
           <Pressable
             style={styles.notifButton}
-            onPress={() => router.push("/settings/notifications")}
+            onPress={() => {
+              if (!user) {
+                requireAuth();
+                return;
+              }
+
+              router.push("/settings/notifications");
+            }}
           >
             <Ionicons
               name={
@@ -116,25 +118,7 @@ export default function HomeScreen() {
           </Pressable>
         </View>
         {}
-        <Pressable onPress={() => router.push("/creature")}>
-          <Card style={styles.creatureCard}>
-            <View style={styles.creatureContent}>
-              <View style={styles.creatureTextCol}>
-                <View style={styles.creatureTag}>
-                  <Text style={styles.creatureTagText}>
-                    Nivel {user?.dataMascota?.nivel ?? ignisCreature.level} •{" "}
-                    {ignisCreature.name}
-                  </Text>
-                </View>
-                <Text style={styles.creatureTitle}>Guardián Activo</Text>
-                <Text style={styles.creatureDesc} numberOfLines={3}>
-                  {ignisMessage(latest?.mag)}
-                </Text>
-              </View>
-              <Ignis size={64} />
-            </View>
-          </Card>
-        </Pressable>
+        <HomeCreatureCard latestMag={latest?.mag} />
         {}
         <ScrollView
           horizontal
@@ -269,7 +253,14 @@ export default function HomeScreen() {
           </Pressable>
           <Pressable
             style={styles.actionCard}
-            onPress={() => router.push("/(tabs)/missions")}
+            onPress={() => {
+              if (!user) {
+                requireAuth();
+                return;
+              }
+
+              router.push("/(tabs)/missions");
+            }}
           >
             <View style={[styles.actionIcon, { backgroundColor: "#E8F5E9" }]}>
               <Ionicons name="bag-handle" size={24} color="#2E7D32" />

@@ -1,68 +1,106 @@
-import {
-    API_BASE_URL,
-    DEFAULT_CREATURE_ID,
-    USE_MOCK_AUTH,
-} from "../config/api";
+import { API_BASE_URL } from "../config/api";
+
 import type {
-    AuthSession,
-    AuthTokens,
-    CreatureData,
-    RegisterInput,
+  AuthSession,
+  AuthTokens,
+  AuthUser,
+  CreatureData,
+  CreatureInfo,
+  RegisterInput,
 } from "../types/auth";
+
 import { ApiError } from "./apiError";
-import * as mock from "./mockAuth";
+
 export { ApiError };
+
 type Context = "login" | "register" | "other";
+
+type RequestOptions = {
+  method?: "GET" | "POST";
+  body?: unknown;
+  token?: string;
+  context?: Context;
+};
+
 type UsuarioResponse = {
   id: number;
   nombreUsuario: string;
   email: string;
   rol: string;
-  accessToken: string;
-  refreshToken: string;
-  dataMascota?: CreatureData | null;
+  ciudad?: string | null;
+  pais?: string | null;
 };
+
 function friendlyMessage(status: number, data: any, context: Context): string {
-  const text = (
-    typeof data?.message === "string" ? data.message : ""
-  ).toLowerCase();
-  if (text.includes("correo registrado") || status === 409) {
+  if (status === 409) {
     return "Este correo ya está registrado. Inicia sesión o usa otro correo.";
   }
-  if (
-    text.includes("usuario no existente") ||
-    text.includes("password incorrecto") ||
-    status === 401
-  ) {
-    return "Correo o contraseña incorrectos.";
-  }
-  if (text.includes("criatura no encontrada")) {
-    return "El servidor no tiene la criatura inicial cargada. Avisa al equipo del backend.";
-  }
-  if (status === 400) {
+
+  if (status === 401) {
     return context === "login"
       ? "Correo o contraseña incorrectos."
-      : "El servidor rechazó los datos. Revisa el formulario.";
+      : "Tu sesión expiró. Inicia sesión de nuevo.";
   }
-  if (status >= 500)
+
+  if (status === 403) {
+    return "No tienes permiso para realizar esta acción.";
+  }
+
+  if (status === 404) {
+    return typeof data?.message === "string"
+      ? data.message
+      : "No se encontró lo solicitado.";
+  }
+
+  if (status === 400) {
+    if (context === "login") {
+      return "Correo o contraseña incorrectos.";
+    }
+
+    return data?.fieldErrors
+      ? "Revisa los campos marcados."
+      : "Los datos enviados no son válidos.";
+  }
+
+  if (status >= 500) {
     return "El servidor tuvo un problema. Inténtalo más tarde.";
-  return "Ocurrió un error inesperado.";
+  }
+
+  return typeof data?.message === "string"
+    ? data.message
+    : "Ocurrió un error inesperado.";
 }
+
 async function request<T>(
   path: string,
-  body?: unknown,
-  context: Context = "other",
+  options: RequestOptions = {},
 ): Promise<T> {
+  const { method = "POST", body, token, context = "other" } = options;
+
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12000);
+
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, 12000);
+
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+  };
+
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   let response: Response;
+
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
+      method,
+      headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     });
@@ -74,70 +112,192 @@ async function request<T>(
   } finally {
     clearTimeout(timer);
   }
-  const raw = await response.text();
+
+  let raw: string;
+
+  try {
+    raw = await response.text();
+  } catch {
+    throw new ApiError("No se pudo leer la respuesta del servidor.", 0);
+  }
+
   let data: any = null;
+
   try {
     data = raw ? JSON.parse(raw) : null;
   } catch {
     data = raw;
   }
+
   if (!response.ok) {
+    const fieldErrors =
+      data && typeof data === "object" && data.fieldErrors
+        ? (data.fieldErrors as Record<string, string>)
+        : undefined;
+
     throw new ApiError(
       friendlyMessage(response.status, data, context),
       response.status,
+      context === "login" ? undefined : fieldErrors,
     );
   }
+
   return data as T;
 }
-function toSession(d: UsuarioResponse): AuthSession {
-  return {
-    user: {
-      id: d.id,
-      nombreUsuario: d.nombreUsuario,
-      email: d.email,
-      rol: d.rol,
-      dataMascota: d.dataMascota ?? null,
-    },
-    tokens: { accessToken: d.accessToken, refreshToken: d.refreshToken },
-  };
-}
-export async function registerUser(input: RegisterInput): Promise<AuthSession> {
-  if (USE_MOCK_AUTH) return mock.registerUser(input);
-  const data = await request<UsuarioResponse>(
-    "/auth/registrar",
-    {
+
+// REGISTRO REAL
+export function registerRequest(input: RegisterInput): Promise<AuthTokens> {
+  return request<AuthTokens>("/auth/registrar", {
+    context: "register",
+    body: {
       nombreUsuario: input.nombreUsuario.trim(),
       email: input.email.trim().toLowerCase(),
       password: input.password,
       pais: input.pais,
       ciudad: input.ciudad?.trim() || undefined,
-      criaturaId: DEFAULT_CREATURE_ID,
+      criaturaId: input.criaturaId,
     },
-    "register",
-  );
-  return toSession(data);
+  });
 }
+
+// LOGIN REAL
+export function loginRequest(
+  email: string,
+  password: string,
+): Promise<AuthTokens> {
+  return request<AuthTokens>("/auth/login", {
+    context: "login",
+    body: {
+      email: email.trim().toLowerCase(),
+      password,
+    },
+  });
+}
+
+// RENOVACIÓN DE TOKENS
+export function refreshTokens(refreshToken: string): Promise<AuthTokens> {
+  return request<AuthTokens>("/auth/reflesh", {
+    body: {
+      token: refreshToken,
+    },
+  });
+}
+
+// CERRAR SESIÓN REMOTA
+export async function logoutRemote(userId: number): Promise<void> {
+  await request<void>(
+    `/auth/invalidacion?userId=${encodeURIComponent(String(userId))}`,
+  );
+}
+
+// CONSULTAR MASCOTA REAL
+export async function fetchMyCreature(
+  accessToken: string,
+): Promise<CreatureData> {
+  const data = await request<CreatureData>("/criatura/myCriatura", {
+    method: "GET",
+    token: accessToken,
+  });
+
+  if (
+    !data ||
+    !data.criatura ||
+    typeof data.nivel !== "number" ||
+    typeof data.xpActual !== "number"
+  ) {
+    throw new ApiError(
+      "El servidor devolvió datos incompletos de la criatura.",
+      0,
+    );
+  }
+
+  return data;
+}
+
+// RECUPERAR PERFIL Y MASCOTA
+export async function fetchAccountData(
+  accessToken: string,
+  fallback?: AuthUser | null,
+): Promise<AuthUser> {
+  const usuario = await request<UsuarioResponse>("/usuario/getDatosUsuario", {
+    method: "GET",
+    token: accessToken,
+  });
+
+  let dataMascota: CreatureData | null =
+    fallback?.id === usuario.id ? fallback.dataMascota : null;
+
+  try {
+    dataMascota = await fetchMyCreature(accessToken);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      dataMascota = null;
+    } else {
+      console.warn("No se pudo cargar la criatura:", error);
+    }
+  }
+
+  return {
+    id: usuario.id,
+    nombreUsuario: usuario.nombreUsuario,
+    email: usuario.email,
+    rol: usuario.rol,
+    ciudad: usuario.ciudad ?? null,
+    pais: usuario.pais ?? null,
+    dataMascota,
+  };
+}
+
+// CATÁLOGO DE CRIATURAS
+export function fetchStarterCreatures(): Promise<CreatureInfo[]> {
+  return request<CreatureInfo[]>("/criatura/eleccion", {
+    method: "GET",
+  });
+}
+
+// CONSTRUIR SESIÓN
+async function buildSession(
+  tokens: AuthTokens,
+  accountError: string,
+): Promise<AuthSession> {
+  try {
+    const user = await fetchAccountData(tokens.accessToken);
+
+    return {
+      user,
+      tokens,
+    };
+  } catch (error) {
+    if (error instanceof ApiError && error.status !== 0) {
+      throw error;
+    }
+
+    throw new ApiError(
+      accountError,
+      error instanceof ApiError ? error.status : 0,
+    );
+  }
+}
+
+// REGISTRAR Y RECUPERAR USUARIO
+export async function registerUser(input: RegisterInput): Promise<AuthSession> {
+  const tokens = await registerRequest(input);
+
+  return buildSession(
+    tokens,
+    "Tu cuenta fue creada, pero no pudimos cargar tu perfil. Inicia sesión.",
+  );
+}
+
+// INICIAR SESIÓN Y RECUPERAR USUARIO
 export async function loginUser(
   email: string,
   password: string,
 ): Promise<AuthSession> {
-  if (USE_MOCK_AUTH) return mock.loginUser(email, password);
-  const data = await request<UsuarioResponse>(
-    "/auth/login",
-    { email: email.trim().toLowerCase(), password },
-    "login",
+  const tokens = await loginRequest(email, password);
+
+  return buildSession(
+    tokens,
+    "Iniciaste sesión, pero no pudimos cargar tu perfil. Inténtalo de nuevo.",
   );
-  return toSession(data);
-}
-export function isTokenValid(token: string): Promise<boolean> {
-  if (USE_MOCK_AUTH) return mock.isTokenValid(token);
-  return request<boolean>("/auth/validacion", { token });
-}
-export function refreshTokens(refreshToken: string): Promise<AuthTokens> {
-  if (USE_MOCK_AUTH) return mock.refreshTokens(refreshToken);
-  return request<AuthTokens>("/auth/reflesh", { token: refreshToken });
-}
-export async function logoutRemote(userId: number): Promise<void> {
-  if (USE_MOCK_AUTH) return mock.logoutRemote(userId);
-  await request<void>(`/auth/invalidacion?userId=${userId}`);
 }

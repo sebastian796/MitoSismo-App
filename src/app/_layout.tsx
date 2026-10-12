@@ -1,9 +1,11 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { AuthRequiredModal } from "../components/auth/AuthRequiredModal";
 import { Colors } from "../constants/theme";
 import { AuthProvider } from "../context/AuthContext";
 import { NotificationSettingsProvider } from "../context/NotificationSettingsContext";
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
@@ -28,6 +30,7 @@ export default function RootLayout() {
             <Stack.Screen name="prevention" />
             <Stack.Screen name="settings" />
           </Stack>
+          <AuthRequiredModal />
         </NotificationSettingsProvider>
       </AuthProvider>
     </SafeAreaProvider>

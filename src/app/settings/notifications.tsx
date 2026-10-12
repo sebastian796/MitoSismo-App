@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, TopBar } from "../../components";
 import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
 import { useNotificationSettings } from "../../context/NotificationSettingsContext";
 import { notificationMode } from "../../services/notificationService";
 import {
@@ -73,6 +74,7 @@ const MODE_INFO: Record<string, string | null> = {
 export default function NotificationsSettingsScreen() {
   const router = useRouter();
   const { settings, setEnabled, update, sendTest } = useNotificationSettings();
+  const { isAuthenticated } = useAuth();
   const [feedback, setFeedback] = useState<{
     ok: boolean;
     text: string;
@@ -93,6 +95,10 @@ export default function NotificationsSettingsScreen() {
     }
   };
   const handleTest = async () => {
+    if (!isAuthenticated) {
+      sendTest(); // abre el aviso "Necesitas iniciar sesión"
+      return;
+    }
     const ok = await sendTest();
     setFeedback(
       ok
@@ -154,6 +160,14 @@ export default function NotificationsSettingsScreen() {
             thumbColor={Colors.white}
           />
         </View>
+        {!isAuthenticated && (
+          <View style={styles.infoBox}>
+            <Ionicons name="lock-closed" size={18} color="#8A5A00" />
+            <Text style={styles.infoText}>
+              Inicia sesión para configurar tus notificaciones.
+            </Text>
+          </View>
+        )}
         {modeInfo && (
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={18} color="#8A5A00" />

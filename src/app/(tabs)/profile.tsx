@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, TopBar } from "../../components";
+import { ProfileCreatureCard } from "../../components/creatures/CreatureCards";
 import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 export default function ProfileScreen() {
@@ -43,18 +44,19 @@ export default function ProfileScreen() {
           </Text>
         </Card>
         {}
+        <ProfileCreatureCard />
         <View style={styles.statsGrid}>
           <Card style={styles.statBox}>
-            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statNumber}>-</Text>
             <Text style={styles.statLabel}>Sismos Reportados</Text>
           </Card>
           <Card style={styles.statBox}>
-            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statNumber}>-</Text>
             <Text style={styles.statLabel}>Misiones Hechas</Text>
           </Card>
           <Card style={styles.statBox}>
             <Text style={styles.statNumber}>
-              {user?.dataMascota?.xpActual ?? 0}
+              {user ? (user.dataMascota?.xpActual ?? 0) : "—"}
             </Text>
             <Text style={styles.statLabel}>XP Total</Text>
           </Card>
@@ -63,33 +65,14 @@ export default function ProfileScreen() {
         <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
           Medallas e Insignias
         </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.badgesRow}
-        >
-          <Card style={styles.badgeCard}>
-            <View style={[styles.badgeIconBox, { backgroundColor: "#E8F5E9" }]}>
-              <Ionicons name="shield-checkmark" size={24} color="#2E7D32" />
-            </View>
-            <Text style={styles.badgeName}>Zona Segura</Text>
-            <Text style={styles.badgeStatus}>Desbloqueado</Text>
-          </Card>
-          <Card style={styles.badgeCard}>
-            <View style={[styles.badgeIconBox, { backgroundColor: "#FFF3E0" }]}>
-              <Ionicons name="bag" size={24} color="#E65100" />
-            </View>
-            <Text style={styles.badgeName}>Mochila Lista</Text>
-            <Text style={styles.badgeStatus}>En progreso</Text>
-          </Card>
-          <Card style={styles.badgeCard}>
-            <View style={[styles.badgeIconBox, { backgroundColor: "#EDE7F6" }]}>
-              <Ionicons name="flame" size={24} color="#512DA8" />
-            </View>
-            <Text style={styles.badgeName}>Amigo de Ignis</Text>
-            <Text style={styles.badgeStatus}>Desbloqueado</Text>
-          </Card>
-        </ScrollView>
+        <Card style={styles.emptyBadges}>
+          <Ionicons name="ribbon-outline" size={28} color={Colors.textMuted} />
+          <Text style={styles.emptyBadgesText}>
+            {user
+              ? "Todavía no tienes medallas. Completa misiones para ganarlas."
+              : "Inicia sesión para ganar medallas con tus misiones."}
+          </Text>
+        </Card>
         {}
         {}
         {user ? (
@@ -225,6 +208,8 @@ const styles = StyleSheet.create({
   logoutButton: {
     marginTop: Spacing.xl,
   },
+  emptyBadges: { padding: Spacing.xl, alignItems: "center", gap: Spacing.sm },
+  emptyBadgesText: { ...Typography.bodySmall, textAlign: "center" },
   gearButton: {
     width: 36,
     height: 36,
