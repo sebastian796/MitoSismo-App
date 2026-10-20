@@ -27,9 +27,15 @@ public class ItemMochilaService {
     private final UsuarioMochilaItemRepository userMochiItemRepo;
     private final UsuarioService userService;
 
+    @Transactional(readOnly = true)
+    public List<ItemMochilaDTO> traerListItem(){
+        return itemMochiRepo.findAll().stream()
+                .map(ItemMochilaDTO::fromEntity).toList();
+    }
+
     // Obtener catálogo completo indicando cuáles ítems tiene marcados el usuario autenticado
     @Transactional(readOnly = true)
-    public List<ItemMochilaDTO> getItemsMochila(String authHeader) {
+    public List<ItemMochilaDTO> traerListMochiItemUser(String authHeader) {
         Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
         List<ItemMochila> listItems = itemMochiRepo.findAllByOrderByOrdenAsc();
         List<UsuarioMochilaItem> listItemsUsuario = userMochiItemRepo.findByUsuarioId(usuario.getId());
@@ -69,10 +75,9 @@ public class ItemMochilaService {
                 .map(ItemMochilaDTO::fromEntity).toList();
     }
 
-
     // Guardar / Sincronizar los ítems marcados por el usuario en su mochila
     @Transactional
-    public void saveItemsMochilaNuevos(String authHeader, List<ItemMochilaRequest> listItemNueva) {
+    public void saveListItemMochiUser(String authHeader, List<ItemMochilaRequest> listItemNueva) {
         Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
 
         // 1. Obtener registros actuales del usuario
