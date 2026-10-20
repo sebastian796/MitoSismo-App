@@ -2,9 +2,9 @@ import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
-import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { CreatureAvatar } from "./CreatureAvatar";
+import { PublicCreatureCard } from "./PublicCreatureCard";
 
 function creatureMessage(mag?: number) {
   if (mag === undefined)
@@ -17,40 +17,22 @@ function creatureMessage(mag?: number) {
 
 /**
  * Tarjeta de criatura del Inicio. Tres estados:
- *  1) Invitado: Ignis ilustrativa, sin nivel ni XP, con opción de registrarse.
+ *  1) Invitado: criatura pública del servidor, sin nivel ni XP.
  *  2) Usuario con criatura: nombre, nivel y XP reales de su cuenta.
  *  3) Usuario sin criatura asignada: estado vacío (no se inventan datos).
  */
-export function HomeCreatureCard({ latestMag }: { latestMag?: number }) {
+export function HomeCreatureCard({
+  latestMag,
+  refreshKey = 0,
+}: {
+  latestMag?: number;
+  refreshKey?: number;
+}) {
   const router = useRouter();
   const { user } = useAuth();
   const mascota = user?.dataMascota ?? null;
 
-  if (!user) {
-    return (
-      <Card style={styles.card}>
-        <View style={styles.content}>
-          <View style={styles.textCol}>
-            <View style={[styles.tag, styles.tagMuted]}>
-              <Text style={styles.tagText}>Mascota ilustrativa</Text>
-            </View>
-            <Text style={styles.title}>Ignis, guardián de MitoSismo</Text>
-            <Text style={styles.desc}>
-              Crea tu cuenta para tener tu propia criatura, ganar XP y subir de
-              nivel.
-            </Text>
-            <Pressable
-              style={styles.cta}
-              onPress={() => router.push("/(auth)/register")}
-            >
-              <Text style={styles.ctaText}>Crear cuenta</Text>
-            </Pressable>
-          </View>
-          <CreatureAvatar nombre="Ignis" size={64} />
-        </View>
-      </Card>
-    );
-  }
+  if (!user) return <PublicCreatureCard refreshKey={refreshKey} />;
 
   if (!mascota) {
     return (
@@ -102,27 +84,10 @@ export function HomeCreatureCard({ latestMag }: { latestMag?: number }) {
 
 /** Tarjeta de criatura del Perfil (fondo claro). */
 export function ProfileCreatureCard() {
-  const router = useRouter();
   const { user } = useAuth();
   const mascota = user?.dataMascota ?? null;
 
-  if (!user) {
-    return (
-      <Card style={styles.profileCard}>
-        <Text style={styles.profileTitle}>Sin criatura</Text>
-        <Text style={styles.profileDesc}>
-          Regístrate para tener tu propia criatura y guardar tu progreso.
-        </Text>
-        <Button
-          title="Crear cuenta"
-          variant="outline"
-          size="small"
-          onPress={() => router.push("/(auth)/register")}
-          style={styles.profileButton}
-        />
-      </Card>
-    );
-  }
+  if (!user) return <PublicCreatureCard variant="profile" />;
 
   if (!mascota) {
     return (

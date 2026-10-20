@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -24,7 +24,6 @@ import { useAuth } from "../../context/AuthContext";
 import { useNotificationSettings } from "../../context/NotificationSettingsContext";
 import { fetchRecentEarthquakes } from "../../services/earthquakeService";
 import type { Quake } from "../../types/earthquake";
-const HOME_COUNTRIES = ["Perú", "Chile", "Ecuador", "Colombia", "México"];
 function greeting() {
   const h = new Date().getHours();
   if (h < 12) return "Buenos días";
@@ -35,42 +34,61 @@ function greeting() {
 export default function HomeScreen() {
   const router = useRouter();
   const { settings } = useNotificationSettings();
-  const [country, setCountry] = useState("Perú");
+  const [creatureRefresh, setCreatureRefresh] = useState(0);
   const [quakes, setQuakes] = useState<Quake[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const requestId = useRef(0);
+  const inFlight = useRef(false);
+  const mounted = useRef(true);
+  const hasLoaded = useRef(false);
   const { user, requireAuth } = useAuth();
-  const load = useCallback(async (c: string, isRefresh = false) => {
-    const id = ++requestId.current;
-    if (isRefresh) setRefreshing(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const load = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    if (hasLoaded.current) setRefreshing(true);
     else setLoading(true);
     setError(null);
     try {
-      const data = await fetchRecentEarthquakes(10);
-      if (id !== requestId.current) return;
-      setQuakes(data);
-    } catch (e) {
-      if (id !== requestId.current) return;
-      console.warn("Error cargando sismos en Home:", e);
-      setError(
-        "No pudimos cargar los sismos. Revisa tu conexión e inténtalo de nuevo.",
-      );
+      // Todos los eventos obtenidos se presentan: último + actividad reciente.
+      const data = await fetchRecentEarthquakes(5);
+      if (mounted.current) {
+        setQuakes(data);
+        hasLoaded.current = true;
+      }
+    } catch {
+      if (mounted.current)
+        setError(
+          "No pudimos cargar los sismos. Revisa tu conexión e inténtalo de nuevo.",
+        );
     } finally {
-      if (id === requestId.current) {
+      inFlight.current = false;
+      if (mounted.current) {
         setLoading(false);
         setRefreshing(false);
       }
     }
   }, []);
-  useEffect(() => {
-    load(country);
-  }, [country, load]);
-  useEffect(() => {
-    const timer = setInterval(() => { void load(country, true); }, 60_000);
-    return () => clearInterval(timer);
-  }, [country, load]);
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+      const timer = setInterval(() => {
+        void load();
+      }, 60_000);
+      return () => clearInterval(timer);
+    }, [load]),
+  );
+  const refresh = () => {
+    if (inFlight.current) return;
+    setCreatureRefresh((value) => value + 1);
+    void load();
+  };
   const latest = quakes[0];
   const info = latest ? magInfo(latest.mag) : null;
   const maxMag = quakes.length ? Math.max(...quakes.map((q) => q.mag)) : null;
@@ -82,7 +100,7 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => load(country, true)}
+            onRefresh={refresh}
             tintColor={Colors.accent}
             colors={[Colors.accent]}
           />
@@ -120,30 +138,10 @@ export default function HomeScreen() {
           </Pressable>
         </View>
         {}
-        <HomeCreatureCard latestMag={latest?.mag} />
-        {}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-        >
-          {HOME_COUNTRIES.map((c) => {
-            const selected = c === country;
-            return (
-              <Pressable
-                key={c}
-                onPress={() => setCountry(c)}
-                style={[styles.chip, selected && styles.chipSelected]}
-              >
-                <Text
-                  style={[styles.chipText, selected && styles.chipTextSelected]}
-                >
-                  {c}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <HomeCreatureCard
+          latestMag={latest?.mag}
+          refreshKey={creatureRefresh}
+        />
         {}
         {loading ? (
           <View style={styles.centerBox}>
@@ -158,7 +156,7 @@ export default function HomeScreen() {
               color={Colors.textSecondary}
             />
             <Text style={styles.centerText}>{error}</Text>
-            <Pressable style={styles.retryButton} onPress={() => load(country)}>
+            <Pressable style={styles.retryButton} onPress={() => void load()}>
               <Text style={styles.retryText}>Reintentar</Text>
             </Pressable>
           </Card>
@@ -170,7 +168,7 @@ export default function HomeScreen() {
               color={Colors.textSecondary}
             />
             <Text style={styles.centerText}>
-              No hay sismos recientes en {country}.
+              No hay sismos recientes disponibles.
             </Text>
           </Card>
         ) : (
@@ -282,7 +280,7 @@ export default function HomeScreen() {
             >
               Actividad Reciente
             </Text>
-            {quakes.slice(1, 5).map((q) => (
+            {quakes.slice(1).map((q) => (
               <Pressable
                 key={q.id}
                 onPress={() => router.push(`/quake/${q.id}`)}
@@ -357,51 +355,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.surface,
   },
-  creatureCard: {
-    backgroundColor: Colors.primaryDark,
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  creatureContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  creatureTextCol: { flex: 1, marginRight: Spacing.md },
-  creatureTag: {
-    backgroundColor: Colors.accent,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: Radii.full,
-    alignSelf: "flex-start",
-    marginBottom: Spacing.xs,
-  },
-  creatureTagText: { fontSize: 10, fontWeight: "700", color: Colors.white },
-  creatureTitle: {
-    ...Typography.titleSmall,
-    color: Colors.white,
-    marginBottom: 2,
-  },
-  creatureDesc: {
-    ...Typography.bodySmall,
-    color: "rgba(255,255,255,0.8)",
-    lineHeight: 16,
-  },
-  chipsRow: { gap: Spacing.sm, paddingBottom: Spacing.lg },
-  chip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
-    borderRadius: Radii.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  chipSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  chipText: { fontSize: 12, fontWeight: "600", color: Colors.textSecondary },
-  chipTextSelected: { color: Colors.white },
   centerBox: {
     alignItems: "center",
     paddingVertical: Spacing.xxl,

@@ -1,64 +1,103 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Linking } from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { TopBar, Card, Button } from '../components';
-import { emergencyContacts } from '../constants/data';
-import { Colors, Spacing, Typography, Radii } from '../constants/theme';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Button, Card, TopBar } from "../components";
+import { emergencyContacts } from "../constants/data";
+import { Colors, Radii, Spacing, Typography } from "../constants/theme";
+import {
+  fetchPreventionTips,
+  type PreventionPhase,
+  type PreventionTip,
+} from "../services/publicContentService";
 export default function PreventionScreen() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'antes' | 'durante' | 'despues'>('durante');
+  const [activeTab, setActiveTab] = useState<PreventionPhase>("durante");
   const kitItems = [
-    { title: 'Agua embotellada (2L por persona)', checked: true },
-    { title: 'Alimentos no perecibles (latas, barras)', checked: true },
-    { title: 'Linterna y pilas de repuesto', checked: false },
-    { title: 'Botiquín de primeros auxilios', checked: true },
-    { title: 'Radio a pilas y silbato de auxilio', checked: false },
-    { title: 'Copia de documentos de identidad', checked: false },
+    { title: "Agua embotellada (2L por persona)", checked: true },
+    { title: "Alimentos no perecibles (latas, barras)", checked: true },
+    { title: "Linterna y pilas de repuesto", checked: false },
+    { title: "Botiquín de primeros auxilios", checked: true },
+    { title: "Radio a pilas y silbato de auxilio", checked: false },
+    { title: "Copia de documentos de identidad", checked: false },
   ];
-  const tips = {
-    antes: [
-      'Ubica y señaliza las zonas seguras internas y externas de tu casa o trabajo.',
-      'Asegura repisas, cuadros, televisores y objetos pesados que puedan caer.',
-      'Ten preparada tu mochila para emergencias cerca a la puerta de salida.',
-      'Participa activamente en los simulacros nacionales de sismo.',
-    ],
-    durante: [
-      'Mantén la calma y ubícate en la Zona Segura interna (columnas y muros portantes).',
-      'Aléjate inmediatamente de ventanas, espejos y objetos de vidrio.',
-      'Si estás en la calle, protégete de cables eléctricos y cornisas.',
-      'No uses ascensores durante ni inmediatamente después del sismo.',
-    ],
-    despues: [
-      'Cierra las llaves de gas y corta el suministro eléctrico principal.',
-      'Utiliza mensajes de texto o internet para comunicarte y no saturar las líneas.',
-      'Evacúa ordenadamente hacia el punto de reunión comunitario.',
-      'Mantente informado únicamente por canales oficiales (INDECI, IGP).',
-    ],
-  };
+  const [tips, setTips] = useState<PreventionTip[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    setTips([]);
+    void fetchPreventionTips(activeTab, controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted) setTips(data);
+      })
+      .catch((cause: unknown) => {
+        if (!controller.signal.aborted)
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "No se pudieron cargar los consejos. Revisa tu conexión.",
+          );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [activeTab, retry]);
   const handleCall = (number: string) => {
     Linking.openURL(`tel:${number}`);
   };
   return (
     <SafeAreaView style={styles.safeArea}>
-      <TopBar title="Guía de Prevención" showBack onBack={() => router.back()} />
+      <TopBar
+        title="Guía de Prevención"
+        showBack
+        onBack={() => router.back()}
+      />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {}
         <View style={styles.phaseTabs}>
-          {(['antes', 'durante', 'despues'] as const).map((phase) => {
+          {(["antes", "durante", "despues"] as const).map((phase) => {
             const active = activeTab === phase;
-            const label = phase === 'antes' ? 'Antes' : phase === 'durante' ? 'Durante' : 'Después';
+            const label =
+              phase === "antes"
+                ? "Antes"
+                : phase === "durante"
+                  ? "Durante"
+                  : "Después";
             return (
               <Pressable
                 key={phase}
                 style={[styles.phaseTab, active && styles.phaseTabActive]}
-                onPress={() => setActiveTab(phase)}
+                onPress={() => {
+                  if (phase !== activeTab) {
+                    setLoading(true);
+                    setTips([]);
+                    setActiveTab(phase);
+                  }
+                }}
               >
-                <Text style={[styles.phaseTabText, active && styles.phaseTabTextActive]}>
+                <Text
+                  style={[
+                    styles.phaseTabText,
+                    active && styles.phaseTabTextActive,
+                  ]}
+                >
                   {label}
                 </Text>
               </Pressable>
@@ -70,31 +109,50 @@ export default function PreventionScreen() {
           <View style={styles.tipsHeader}>
             <Ionicons
               name={
-                activeTab === 'antes'
-                  ? 'shield-checkmark'
-                  : activeTab === 'durante'
-                  ? 'alert-circle'
-                  : 'medical'
+                activeTab === "antes"
+                  ? "shield-checkmark"
+                  : activeTab === "durante"
+                    ? "alert-circle"
+                    : "medical"
               }
               size={22}
               color={Colors.accent}
             />
             <Text style={styles.tipsTitle}>
-              {activeTab === 'antes'
-                ? 'Preparación Previa'
-                : activeTab === 'durante'
-                ? 'Acciones Inmediatas'
-                : 'Recuperación y Cuidado'}
+              {activeTab === "antes"
+                ? "Preparación Previa"
+                : activeTab === "durante"
+                  ? "Acciones Inmediatas"
+                  : "Recuperación y Cuidado"}
             </Text>
           </View>
-          {tips[activeTab].map((tip, idx) => (
-            <View key={idx} style={styles.tipItem}>
-              <View style={styles.tipNumber}>
-                <Text style={styles.tipNumberText}>{idx + 1}</Text>
-              </View>
-              <Text style={styles.tipText}>{tip}</Text>
+          {loading ? (
+            <ActivityIndicator
+              color={Colors.accent}
+              accessibilityLabel="Cargando consejos"
+            />
+          ) : error ? (
+            <View>
+              <Text style={styles.tipText}>{error}</Text>
+              <Button
+                title="Reintentar"
+                onPress={() => setRetry((value) => value + 1)}
+              />
             </View>
-          ))}
+          ) : tips.length === 0 ? (
+            <Text style={styles.tipText}>
+              El servidor no tiene consejos registrados para esta fase.
+            </Text>
+          ) : (
+            tips.map((tip, idx) => (
+              <View key={idx} style={styles.tipItem}>
+                <View style={styles.tipNumber}>
+                  <Text style={styles.tipNumberText}>{idx + 1}</Text>
+                </View>
+                <Text style={styles.tipText}>{tip.consejo}</Text>
+              </View>
+            ))
+          )}
         </Card>
         {}
         <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
@@ -104,15 +162,12 @@ export default function PreventionScreen() {
           {kitItems.map((item, index) => (
             <View key={index} style={styles.kitRow}>
               <Ionicons
-                name={item.checked ? 'checkbox' : 'square-outline'}
+                name={item.checked ? "checkbox" : "square-outline"}
                 size={20}
-                color={item.checked ? '#2E7D32' : Colors.textMuted}
+                color={item.checked ? "#2E7D32" : Colors.textMuted}
               />
               <Text
-                style={[
-                  styles.kitText,
-                  item.checked && styles.kitTextChecked,
-                ]}
+                style={[styles.kitText, item.checked && styles.kitTextChecked]}
               >
                 {item.title}
               </Text>
@@ -163,7 +218,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xxxl,
   },
   phaseTabs: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: Colors.surfaceAlt,
     borderRadius: Radii.md,
     padding: 4,
@@ -172,7 +227,7 @@ const styles = StyleSheet.create({
   phaseTab: {
     flex: 1,
     paddingVertical: Spacing.sm,
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: Radii.sm,
   },
   phaseTabActive: {
@@ -180,7 +235,7 @@ const styles = StyleSheet.create({
   },
   phaseTabText: {
     ...Typography.bodySmall,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textSecondary,
   },
   phaseTabTextActive: {
@@ -190,8 +245,8 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
   tipsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     marginBottom: Spacing.md,
   },
@@ -199,8 +254,8 @@ const styles = StyleSheet.create({
     ...Typography.titleSmall,
   },
   tipItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     marginBottom: Spacing.md,
   },
   tipNumber: {
@@ -208,14 +263,14 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     backgroundColor: Colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: Spacing.md,
     marginTop: 1,
   },
   tipNumberText: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: "800",
     color: Colors.primary,
   },
   tipText: {
@@ -233,8 +288,8 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   kitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
   },
   kitText: {
@@ -248,9 +303,9 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   contactCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: Colors.surface,
     padding: Spacing.md,
     borderRadius: Radii.lg,
@@ -263,7 +318,7 @@ const styles = StyleSheet.create({
   },
   contactName: {
     ...Typography.bodyMedium,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textPrimary,
   },
   contactSub: {
@@ -272,9 +327,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   callBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#C62828',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#C62828",
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
     borderRadius: Radii.full,
@@ -282,7 +337,7 @@ const styles = StyleSheet.create({
   },
   callNumber: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
     color: Colors.white,
   },
   backButton: {

@@ -1,3 +1,5 @@
+// Catálogo público local: valores exactos de server/.../entity/enums/Pais.java.
+// El backend no expone un endpoint de países; no se consulta una API incompatible.
 export const COUNTRIES = [
   { value: "ARGENTINA", label: "Argentina" },
   { value: "BOLIVIA", label: "Bolivia" },

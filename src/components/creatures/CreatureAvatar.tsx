@@ -14,6 +14,7 @@ type Props = {
   elemento?: string | null;
   imageUrl?: string | null;
   size?: number;
+  allowIllustration?: boolean;
 };
 
 const ELEMENT_STYLE: Record<
@@ -57,11 +58,15 @@ function resolveImageUrl(imageUrl?: string | null): string | null {
     return path;
   }
 
-  const serverOrigin = API_BASE_URL.replace(/\/api\/?$/, "").replace(/\/$/, "");
-
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-
-  return `${serverOrigin}${normalizedPath}`;
+  try {
+    const origin = new URL(API_BASE_URL).origin;
+    const resolved = new URL(path, origin + "/");
+    return ["http:", "https:"].includes(resolved.protocol)
+      ? resolved.href
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export function CreatureAvatar({
@@ -69,6 +74,7 @@ export function CreatureAvatar({
   elemento,
   imageUrl,
   size = 64,
+  allowIllustration = true,
 }: Props) {
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -81,10 +87,6 @@ export function CreatureAvatar({
   const normalizedName = nombre?.trim().toLowerCase() ?? "";
 
   const normalizedElement = elemento?.trim().toUpperCase() ?? "";
-
-  if (normalizedName === "ignis") {
-    return <Ignis size={size} />;
-  }
 
   if (imageUri && !imageFailed) {
     return (
@@ -105,6 +107,9 @@ export function CreatureAvatar({
       />
     );
   }
+
+  if (allowIllustration && normalizedName === "ignis")
+    return <Ignis size={size} />;
 
   const elementStyle = ELEMENT_STYLE[normalizedElement];
 

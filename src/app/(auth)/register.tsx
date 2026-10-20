@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Input, TopBar } from "../../components";
 import { CountryPicker } from "../../components/auth/CountryPicker";
 import { CreatureAvatar } from "../../components/creatures/CreatureAvatar";
-import { DEFAULT_COUNTRY } from "../../constants/countries";
+import { COUNTRIES, DEFAULT_COUNTRY } from "../../constants/countries";
 import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { ApiError, fetchStarterCreatures } from "../../services/authService";
@@ -33,6 +33,7 @@ type Errors = {
   password?: string;
   confirm?: string;
   criatura?: string;
+  pais?: string;
 };
 
 export default function RegisterScreen() {
@@ -42,6 +43,7 @@ export default function RegisterScreen() {
   const [nombreUsuario, setNombreUsuario] = useState("");
   const [email, setEmail] = useState("");
   const [pais, setPais] = useState<string>(DEFAULT_COUNTRY);
+  const [countryOpen, setCountryOpen] = useState(false);
   const [ciudad, setCiudad] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -94,6 +96,9 @@ export default function RegisterScreen() {
     const next: Errors = {
       nombreUsuario: validateUsername(nombreUsuario),
       email: validateEmail(email),
+      pais: COUNTRIES.some((country) => country.value === pais)
+        ? undefined
+        : "Selecciona un país válido.",
       password: validatePassword(password),
       confirm: !confirm
         ? "Confirma tu contraseña."
@@ -131,6 +136,7 @@ export default function RegisterScreen() {
             email: fe.email,
             password: fe.password,
             criatura: fe.criaturaId,
+            pais: fe.pais,
           });
         }
         setFormError(e.message);
@@ -143,7 +149,11 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView
+      style={styles.safeArea}
+      onTouchStart={() => setCountryOpen(false)}
+      onPointerDown={() => setCountryOpen(false)}
+    >
       <TopBar title="Crear Cuenta" showBack onBack={() => router.back()} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -194,7 +204,19 @@ export default function RegisterScreen() {
               autoCorrect={false}
               error={errors.email}
             />
-            <CountryPicker label="País" value={pais} onChange={setPais} />
+            <CountryPicker
+              label="País"
+              value={pais}
+              open={countryOpen}
+              onOpenChange={setCountryOpen}
+              onChange={(value) => {
+                setPais(value);
+                clear("pais");
+              }}
+            />
+            {!!errors.pais && (
+              <Text style={styles.fieldError}>{errors.pais}</Text>
+            )}
             <Input
               label="Ciudad (opcional)"
               placeholder="Lima"

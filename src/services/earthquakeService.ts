@@ -1,5 +1,3 @@
-import { COUNTRIES } from "../constants/countries";
-import polygonData from "../constants/countryPolygons.json";
 import type { Quake } from "../types/earthquake";
 import { isQuakeInCountry } from "../utils/countryFilter";
 
@@ -9,8 +7,7 @@ import { isQuakeInCountry } from "../utils/countryFilter";
 
 const quakeCache = new Map<string, Quake>();
 
-const USGS_API_URL =
-  "https://earthquake.usgs.gov/fdsnws/event/1/query";
+const USGS_API_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query";
 
 const GEOJSON_URL = "/geo/countries.geojson";
 
@@ -59,7 +56,13 @@ type CountryName = keyof typeof COUNTRY_BOUNDS;
 
 type USGSFeature = {
   id: string;
-  properties: { mag: number | null; magType: string | null; place: string | null; time: number | null; title: string | null };
+  properties: {
+    mag: number | null;
+    magType: string | null;
+    place: string | null;
+    time: number | null;
+    title: string | null;
+  };
   geometry: { coordinates: [number, number, number] };
 };
 
@@ -119,7 +122,7 @@ function formatCoordinates(lat: number, lng: number): string {
   const longitudeDirection = lng >= 0 ? "E" : "O";
 
   return `${Math.abs(lat).toFixed(3)}°${latitudeDirection}  ${Math.abs(
-    lng
+    lng,
   ).toFixed(3)}°${longitudeDirection}`;
 }
 
@@ -148,13 +151,15 @@ function extractCountry(place: string): string {
 
 function mapFeatureToQuake(
   feature: USGSFeature,
-  countryOverride?: CountryName
+  countryOverride?: CountryName,
 ): Quake | null {
   const { properties, geometry } = feature;
 
   if (
+    !Number.isFinite(properties.mag) ||
     properties.mag === null ||
     properties.place === null ||
+    !Number.isFinite(properties.time) ||
     properties.time === null ||
     !geometry?.coordinates
   ) {
@@ -178,8 +183,7 @@ function mapFeatureToQuake(
     place: properties.place,
     depth: Number(depth.toFixed(1)),
     time: formatRelativeTime(properties.time),
-    country:
-      countryOverride ?? extractCountry(properties.place),
+    country: countryOverride ?? extractCountry(properties.place),
     lat,
     lng,
     coords: formatCoordinates(lat, lng),
@@ -194,7 +198,6 @@ function mapFeatureToQuake(
 // ==========================================
 // 4. CONSULTA DE SISMOS RECIENTES
 // ==========================================
-
 
 export async function fetchRecentEarthquakes(
   limit = 20,
@@ -214,22 +217,13 @@ export async function fetchRecentEarthquakes(
 
   // Consultaremos más registros cuando haya
   // que aplicar filtros adicionales.
-  const requiresFiltering =
-    !!selectedCountry || country === "Internacional";
+  const requiresFiltering = !!selectedCountry || country === "Internacional";
 
-  const pageSize = requiresFiltering
-    ? Math.max(100, limit)
-    : limit;
+  const pageSize = requiresFiltering ? Math.max(100, limit) : limit;
 
   const maxPages = requiresFiltering ? 3 : 1;
 
-  const excludedCountries = [
-    "Perú",
-    "Chile",
-    "Ecuador",
-    "Colombia",
-    "México",
-  ];
+  const excludedCountries = ["Perú", "Chile", "Ecuador", "Colombia", "México"];
 
   for (let page = 0; page < maxPages; page++) {
     const params = new URLSearchParams({
@@ -245,38 +239,32 @@ export async function fetchRecentEarthquakes(
 
       // Márgenes ampliados para incluir
       // zonas marítimas cercanas.
-      params.set(
-        "minlatitude",
-        String(bounds.minlatitude - 2),
-      );
+      params.set("minlatitude", String(bounds.minlatitude - 2));
 
-      params.set(
-        "maxlatitude",
-        String(bounds.maxlatitude + 2),
-      );
+      params.set("maxlatitude", String(bounds.maxlatitude + 2));
 
-      params.set(
-        "minlongitude",
-        String(bounds.minlongitude - 3),
-      );
+      params.set("minlongitude", String(bounds.minlongitude - 3));
 
-      params.set(
-        "maxlongitude",
-        String(bounds.maxlongitude + 3),
-      );
+      params.set("maxlongitude", String(bounds.maxlongitude + 3));
     }
 
-    const response = await fetch(
-      `${USGS_API_URL}?${params.toString()}`,
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        `Error al consultar la API sísmica: ${response.status}`,
-      );
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    let data: USGSResponse;
+    try {
+      const response = await fetch(`${USGS_API_URL}?${params.toString()}`, {
+        signal: controller.signal,
+      });
+      if (!response.ok)
+        throw new Error(
+          `Error al consultar la API sísmica: ${response.status}`,
+        );
+      data = await response.json();
+      if (!Array.isArray(data.features))
+        throw new Error("Respuesta USGS inválida.");
+    } finally {
+      clearTimeout(timeout);
     }
-
-    const data: USGSResponse = await response.json();
 
     for (const feature of data.features) {
       if (seenIds.has(feature.id)) continue;
@@ -285,33 +273,20 @@ export async function fetchRecentEarthquakes(
 
       // Segunda etapa: filtro geográfico.
       if (selectedCountry) {
-        const [lng, lat] =
-          feature.geometry?.coordinates ?? [];
+        const [lng, lat] = feature.geometry?.coordinates ?? [];
 
-        if (
-          !Number.isFinite(lng) ||
-          !Number.isFinite(lat)
-        ) {
+        if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
           continue;
         }
 
-        if (
-          !isQuakeInCountry(
-            lng,
-            lat,
-            selectedCountry,
-          )
-        ) {
+        if (!isQuakeInCountry(lng, lat, selectedCountry)) {
           continue;
         }
       }
 
       // Solo asignamos el país seleccionado
       // después de validar sus coordenadas.
-      const quake = mapFeatureToQuake(
-        feature,
-        selectedCountry,
-      );
+      const quake = mapFeatureToQuake(feature, selectedCountry);
 
       if (!quake) continue;
 
@@ -340,14 +315,11 @@ export async function fetchRecentEarthquakes(
   return quakes;
 }
 
-
 // ==========================================
 // 5. CONSULTA POR ID
 // ==========================================
 
-export async function fetchEarthquakeById(
-  id: string
-): Promise<Quake | null> {
+export async function fetchEarthquakeById(id: string): Promise<Quake | null> {
   const cached = quakeCache.get(id);
 
   if (cached) {
@@ -359,24 +331,19 @@ export async function fetchEarthquakeById(
     eventid: id,
   });
 
-  const response = await fetch(
-    `${USGS_API_URL}?${params.toString()}`
-  );
+  const response = await fetch(`${USGS_API_URL}?${params.toString()}`);
 
   if (!response.ok) {
-    throw new Error(
-      `Error al consultar el sismo: ${response.status}`
-    );
+    throw new Error(`Error al consultar el sismo: ${response.status}`);
   }
 
   const data = await response.json();
 
-  const feature: USGSFeature | undefined =
-    Array.isArray(data?.features)
-      ? data.features[0]
-      : data?.type === "Feature"
-        ? data
-        : undefined;
+  const feature: USGSFeature | undefined = Array.isArray(data?.features)
+    ? data.features[0]
+    : data?.type === "Feature"
+      ? data
+      : undefined;
 
   if (!feature) {
     return null;

@@ -16,15 +16,15 @@ export default function RootLayout() {
             screenOptions={{
               headerShown: false,
               contentStyle: { backgroundColor: Colors.background },
-              animation: "slide_from_right",
+              animation: "fade",
             }}
           >
             <Stack.Screen name="index" />
-            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(auth)" options={{ animation: "none" }} />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen
               name="quake/[id]"
-              options={{ presentation: "card", animation: "slide_from_bottom" }}
+              options={{ presentation: "card" }}
             />
             <Stack.Screen name="creature" />
             <Stack.Screen name="prevention" />
