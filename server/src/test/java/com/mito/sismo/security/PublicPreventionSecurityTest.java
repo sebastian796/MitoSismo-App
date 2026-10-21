@@ -1,6 +1,12 @@
 package com.mito.sismo.security;
 
-import com.mito.sismo.config.SecurityConfig;
+import static org.mockito.Mockito.mock;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,15 +21,42 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
-import static org.mockito.Mockito.mock;
-import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mito.sismo.config.SecurityConfig;
 
 // Contexto MVC aislado: usa la seguridad real sin iniciar Spring Boot, JPA ni conexiones.
 class PublicPreventionSecurityTest {
+    @Configuration
+    @EnableWebMvc
+    static class TestConfig {
+        @Bean
+        JwtFilter jwtFilter() {
+            return new JwtFilter(mock(JwtUtil.class));
+        }
+
+        @Bean
+        Routes routes() {
+            return new Routes();
+        }
+    }
+
+    @RestController
+    static class Routes {
+        @GetMapping({ "/api/prevencion/antes", "/api/prevencion/durante", "/api/prevencion/despues",
+                "/api/criatura/myCriatura", "/api/usuario/getDatosUsuario",
+                "/api/contectoEmergencia/getListContactoEmergencia", "/api/misiones/", "/api/misiones/completas",
+                "/api/misiones/incompleta", "/api/misiones/publico" })
+        String read() {
+            return "[]";
+        }
+
+        @PostMapping("/api/prevencion/antes")
+        String write() {
+            return "ok";
+        }
+    }
+
     private AnnotationConfigWebApplicationContext context;
+
     private MockMvc mvc;
 
     @BeforeEach
@@ -36,11 +69,13 @@ class PublicPreventionSecurityTest {
     }
 
     @AfterEach
-    void close() { context.close(); }
+    void close() {
+        context.close();
+    }
 
     @Test
     void preventionReadsArePublic() throws Exception {
-        for (String phase : new String[]{"antes", "durante", "despues"}) {
+        for (String phase : new String[] { "antes", "durante", "despues" }) {
             mvc.perform(get("/api/prevencion/" + phase)).andExpect(status().isOk());
         }
     }
@@ -52,19 +87,22 @@ class PublicPreventionSecurityTest {
         mvc.perform(get("/api/usuario/getDatosUsuario")).andExpect(status().is4xxClientError());
     }
 
-    @Configuration
-    @EnableWebMvc
-    static class TestConfig {
-        @Bean JwtFilter jwtFilter() { return new JwtFilter(mock(JwtUtil.class)); }
-        @Bean Routes routes() { return new Routes(); }
+    @Test
+    void emergencyCatalogAllowsOnlyPublicRead() throws Exception {
+        mvc.perform(get("/api/contectoEmergencia/getListContactoEmergencia")).andExpect(status().isOk());
+        mvc.perform(post("/api/contectoEmergencia/getListContactoEmergencia")).andExpect(status().is4xxClientError());
     }
 
-    @RestController
-    static class Routes {
-        @GetMapping({"/api/prevencion/antes", "/api/prevencion/durante", "/api/prevencion/despues",
-                "/api/criatura/myCriatura", "/api/usuario/getDatosUsuario"})
-        String read() { return "[]"; }
-        @PostMapping("/api/prevencion/antes")
-        String write() { return "ok"; }
+    @Test
+    void noMissionReadIsPublic() throws Exception {
+        for (String route : new String[] { "/api/misiones/", "/api/misiones/completas", "/api/misiones/incompleta",
+                "/api/misiones/publico" }) {
+            mvc.perform(get(route)).andExpect(status().is4xxClientError());
+        }
+    }
+
+    @Test
+    void authenticatedUserCanReadMissionRoutes() throws Exception {
+        mvc.perform(get("/api/misiones/").with(user("cuenta-prueba").roles("USUARIO"))).andExpect(status().isOk());
     }
 }

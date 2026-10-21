@@ -3,11 +3,20 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, TopBar } from "../../components";
+import { MissionsAccessGuard } from "../../components/auth/MissionsAccessGuard";
 import { missions as initialMissions } from "../../constants/data";
 import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { Mission } from "../../types";
 export default function MissionsScreen() {
+  return (
+    <MissionsAccessGuard>
+      <AuthenticatedMissionsScreen />
+    </MissionsAccessGuard>
+  );
+}
+
+function AuthenticatedMissionsScreen() {
   const { user, requireAuth } = useAuth();
   const [missionsList, setMissionsList] = useState<Mission[]>(initialMissions);
   // Nivel y XP reales de la cuenta (fórmula del backend: nivel = raíz de XP/10).
