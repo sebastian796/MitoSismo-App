@@ -1,4 +1,5 @@
 package com.mito.sismo.entity;
+
 import com.mito.sismo.entity.enums.Pais;
 import com.mito.sismo.entity.enums.Role;
 import jakarta.persistence.*;

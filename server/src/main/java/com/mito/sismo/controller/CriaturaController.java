@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("api/criatura")
+@RequestMapping("/api/criatura")
 public class CriaturaController {
 
     private final CriaturaService criaturaService;
@@ -35,8 +35,10 @@ public class CriaturaController {
     }
 
     @GetMapping("/myCriatura")
-    public ResponseEntity<CriaturaDataDTO> traerMyCriatura(
-            @RequestHeader("Authorization") String authHeader) {
+    ResponseEntity<CriaturaDataDTO> traerMyCriatura(
+            @RequestHeader(value = "Authorization", required = false)
+            String authHeader
+    ){
         CriaturaDataDTO cria = criaturaService.mostrarMyCriatura(authHeader);
 
         return ResponseEntity.ok(cria);

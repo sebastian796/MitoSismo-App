@@ -2,8 +2,7 @@ package com.mito.sismo.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
+
 @Entity
 @Getter
 @Setter
@@ -26,6 +25,5 @@ public class Mision {
     private Instant createdAt = Instant.now();
     @Column(name = "image_url", length = 500)
     private String imageUrl;
-    @OneToMany(mappedBy = "mision", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private Set<UsuarioMision> usuarios = new HashSet<>();
+
 }

@@ -1,4 +1,6 @@
 package com.mito.sismo.entity;
+
+import com.mito.sismo.dto.entidades.ItemMochilaDTO;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.HashSet;

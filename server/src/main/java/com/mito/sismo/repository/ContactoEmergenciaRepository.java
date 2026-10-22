@@ -7,8 +7,4 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ContactoEmergenciaRepository extends JpaRepository<ContactoEmergencia, Integer> {
-
-    List<ContactoEmergencia> findByPais(Pais pais);
-
-    Optional<ContactoEmergencia> findByNombre(String nombre);
 }

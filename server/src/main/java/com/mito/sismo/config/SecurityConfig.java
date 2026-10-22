@@ -53,12 +53,13 @@ public class SecurityConfig {
 
                         // Catálogos públicos de sólo lectura (criaturas, fases, contactos, etc.)
                         .requestMatchers(HttpMethod.GET, "/api/criatura/publico", "/api/criatura/eleccion").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/prevencion/antes", "/api/prevencion/durante", "/api/prevencion/despues").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/fases-prevencion/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/contactos-emergencia/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/prevencion/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/misiones/publico").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/itemMochila/listItems").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/contactos-emergencia/**").permitAll()
 
                         // Endpoints que requieren usuario autenticado
+                        .requestMatchers("/api/criatura/**").authenticated()
                         .requestMatchers("/api/misiones/**").authenticated()
                         .requestMatchers("/api/usuario/**").authenticated()
                         .requestMatchers("/api/mochila/**").authenticated()

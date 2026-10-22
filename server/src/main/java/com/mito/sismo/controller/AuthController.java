@@ -1,5 +1,6 @@
 package com.mito.sismo.controller;
 
+import com.mito.sismo.dto.CustomUserPrincipal;
 import com.mito.sismo.dto.entidades.TokensDTO;
 import com.mito.sismo.dto.request.TokenRequest;
 import com.mito.sismo.dto.request.UserCreateRequest;
@@ -9,6 +10,7 @@ import com.mito.sismo.service.UsuarioService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -41,12 +43,15 @@ public class AuthController {
                 return ResponseEntity.ok(accessToken);
         }
 
-        @PostMapping("/invalidacion")
-        public ResponseEntity<Void> logoutUser(
-                        @RequestParam Long userId) {
-                refreshTokenService.revokeAllTokensForUser(userId);
-                return ResponseEntity.ok().build();
-        }
+    // -Invalidar Tokens
+    @PostMapping("/invalidacion")
+    public ResponseEntity<Void> logoutUser(
+            @Valid @RequestBody
+            TokenRequest token
+            ){
+        refreshTokenService.revokeAllTokensForUser(token.getToken());
+        return ResponseEntity.ok().build();
+    }
 
         @PostMapping("/validacion")
         public ResponseEntity<Boolean> validateToken(
