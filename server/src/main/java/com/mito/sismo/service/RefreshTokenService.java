@@ -76,7 +76,8 @@ public class RefreshTokenService {
 
     // Revocar todos los tokens de un usuario (para cierre de sesión / logout global)
     @Transactional
-    public void revokeAllTokensForUser(Long userId) {
+    public void revokeAllTokensForUser(String token) {
+        Long userId = jwtUtil.extractUserId(token);
         Usuario usuario = usuarioRepository.findById(userId)
                 .orElseThrow(() -> new UsuarioNotFoundException(userId));
         refreshTokenRepository.findAllByUsuario(usuario)

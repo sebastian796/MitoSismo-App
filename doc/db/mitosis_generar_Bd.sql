@@ -85,6 +85,7 @@ CREATE TABLE usuario_misiones (
 );
 CREATE INDEX idx_usuario_misiones_usuario ON usuario_misiones(usuario_id);
 CREATE INDEX idx_usuario_misiones_mision ON usuario_misiones(mision_id);
+CREATE INDEX idx_usuario_misiones_user_completada ON usuario_misiones(usuario_id, completada);
 
 -- =========================
 -- TABLA: insignias

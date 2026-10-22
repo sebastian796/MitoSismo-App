@@ -29,7 +29,7 @@ public class ItemMochilaService {
 
     @Transactional(readOnly = true)
     public List<ItemMochilaDTO> traerListItem(){
-        return itemMochiRepo.findAll().stream()
+        return itemMochiRepo.findAllByOrderByIdAsc().stream()
                 .map(ItemMochilaDTO::fromEntity).toList();
     }
 
@@ -37,7 +37,7 @@ public class ItemMochilaService {
     @Transactional(readOnly = true)
     public List<ItemMochilaDTO> traerListMochiItemUser(String authHeader) {
         Usuario usuario = userService.extraerUsuarioEmailToken(authHeader);
-        List<ItemMochila> listItems = itemMochiRepo.findAllByOrderByOrdenAsc();
+        List<ItemMochila> listItems = itemMochiRepo.findAllByOrderByIdAsc();
         List<UsuarioMochilaItem> listItemsUsuario = userMochiItemRepo.findByUsuarioId(usuario.getId());
 
         // Mapa de itemId -> estado marcado
@@ -70,7 +70,7 @@ public class ItemMochilaService {
                         item -> Boolean.TRUE.equals(item.getMarcado()),
                         (existente,reemplazo) -> existente
                 ));
-        return itemMochiRepo.findAll().stream()
+        return itemMochiRepo.findAllByOrderByIdAsc().stream()
                 .filter(item ->  !itemUser.containsKey(item.getId()))
                 .map(ItemMochilaDTO::fromEntity).toList();
     }

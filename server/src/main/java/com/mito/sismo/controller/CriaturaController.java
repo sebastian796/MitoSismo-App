@@ -15,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("api/criatura")
+@RequestMapping("/api/criatura")
 public class CriaturaController {
 
     private final CriaturaService criaturaService;
@@ -37,7 +37,7 @@ public class CriaturaController {
     // -Criatura por Usuario
     @GetMapping("/myCriatura")
     ResponseEntity<CriaturaDataDTO> traerMyCriatura(
-            @RequestHeader
+            @RequestHeader(value = "Authorization", required = false)
             String authHeader
     ){
         CriaturaDataDTO cria = criaturaService.mostrarMyCriatura(authHeader);

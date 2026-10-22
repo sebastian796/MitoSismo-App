@@ -36,7 +36,7 @@ public class ItemMochilaController {
     // Marcar Item de la Mochila Usuario
     @PostMapping("/guardarList")
     ResponseEntity<Void> postItemMochiUser(
-            @RequestHeader String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestBody List<ItemMochilaRequest> newListItemMochiUser
     ){
         itemMochiService.saveListItemMochiUser(authHeader,newListItemMochiUser);

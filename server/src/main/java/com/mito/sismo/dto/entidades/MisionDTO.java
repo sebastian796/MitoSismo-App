@@ -21,6 +21,7 @@ import lombok.NoArgsConstructor;
 })
 public class MisionDTO {
     // Datos Misiones
+    private Integer id;
     private String titulo;
     private String descripcion;
     private Integer xpRecompensa;
@@ -33,7 +34,9 @@ public class MisionDTO {
     }
 
     public static MisionDTO fromEntity(Mision mision, Boolean completada) {
+        if (mision == null) return null;
         return MisionDTO.builder()
+                .id(mision.getId())
                 .titulo(mision.getTitulo())
                 .descripcion(mision.getDescripcion())
                 .xpRecompensa(mision.getXpRecompensa())

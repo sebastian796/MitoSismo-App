@@ -23,7 +23,7 @@ public class UsuarioMision {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "mision_id", nullable = false)
     private Mision mision;
 

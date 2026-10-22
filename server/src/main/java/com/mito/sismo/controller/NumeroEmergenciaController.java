@@ -12,13 +12,13 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("api/contectoEmergencia")
+@RequestMapping("/api/contactos-emergencia")
 public class NumeroEmergenciaController {
 
     private final NumeroEmergenciaService numEmergService;
 
     // -Traer Numero de Emergencia
-    @GetMapping("/getListContactoEmergencia")
+    @GetMapping("/")
     ResponseEntity<List<ContactoEmergenciaDTO>> traerListContacto(){
         List<ContactoEmergenciaDTO> list = numEmergService.traerListContacto();
         return ResponseEntity.ok(list);
