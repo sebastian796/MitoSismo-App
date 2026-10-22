@@ -1,12 +1,10 @@
 package com.mito.sismo.controller;
 
 import com.mito.sismo.dto.entidades.ItemMochilaDTO;
-import com.mito.sismo.dto.request.ItemMochilaRequest;
 import com.mito.sismo.service.ItemMochilaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.w3c.dom.stylesheets.LinkStyle;
 
 import java.util.List;
 
