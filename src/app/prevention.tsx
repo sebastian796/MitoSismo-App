@@ -12,15 +12,45 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, TopBar } from "../components";
+import { COUNTRIES } from "../constants/countries";
 import { emergencyContacts } from "../constants/data";
 import { Colors, Radii, Spacing, Typography } from "../constants/theme";
+import { useAuth } from "../context/AuthContext";
 import {
+  fetchEmergencyDirectory,
   fetchPreventionTips,
+  type EmergencyDirectory,
   type PreventionPhase,
   type PreventionTip,
 } from "../services/publicContentService";
 export default function PreventionScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const country = user?.pais ?? "PERU";
+  const [directory, setDirectory] = useState<EmergencyDirectory | null>(null);
+  const [loadingContacts, setLoadingContacts] = useState(true);
+  const [contactsRetry, setContactsRetry] = useState(0);
+  const [callError, setCallError] = useState<string | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    setDirectory(null);
+    setLoadingContacts(true);
+    void fetchEmergencyDirectory(country, controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted) setDirectory(data);
+      })
+      .catch(() => {
+        // La salida de pantalla cancela la suscripción; el servicio resuelve los fallos con el directorio local.
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingContacts(false);
+      });
+    return () => controller.abort();
+  }, [country, contactsRetry]);
+  const contacts = directory?.contacts ?? emergencyContacts;
+  const contactsCountry =
+    COUNTRIES.find((item) => item.value === directory?.country)?.label ??
+    "Perú";
   const [activeTab, setActiveTab] = useState<PreventionPhase>("durante");
   const kitItems = [
     { title: "Agua embotellada (2L por persona)", checked: true },
@@ -57,7 +87,12 @@ export default function PreventionScreen() {
     return () => controller.abort();
   }, [activeTab, retry]);
   const handleCall = (number: string) => {
-    Linking.openURL(`tel:${number}`);
+    setCallError(null);
+    void Linking.openURL(`tel:${number}`).catch(() => {
+      setCallError(
+        "No se pudo abrir la aplicación de llamadas en este dispositivo.",
+      );
+    });
   };
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -175,26 +210,59 @@ export default function PreventionScreen() {
           ))}
         </Card>
         {}
-        <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
-          Líneas de Emergencia Directas
-        </Text>
-        <View style={styles.contactsGrid}>
-          {emergencyContacts.map((contact, index) => (
-            <Pressable
-              key={index}
-              style={styles.contactCard}
-              onPress={() => handleCall(contact.number)}
-            >
-              <View style={styles.contactLeft}>
-                <Text style={styles.contactName}>{contact.name}</Text>
-                <Text style={styles.contactSub}>{contact.description}</Text>
-              </View>
-              <View style={styles.callBadge}>
-                <Ionicons name="call" size={14} color={Colors.white} />
-                <Text style={styles.callNumber}>{contact.number}</Text>
-              </View>
-            </Pressable>
-          ))}
+        <View style={styles.contactsSection}>
+          <Text style={styles.contactsTitle}>
+            Líneas de Emergencia Directas
+          </Text>
+          <Text style={styles.contactsInfo}>
+            {directory?.source === "backend"
+              ? "Directorio del servidor · " + contactsCountry
+              : "Directorio local oficial · Perú · Líneas gratuitas"}
+          </Text>
+          {loadingContacts && (
+            <ActivityIndicator
+              color={Colors.accent}
+              accessibilityLabel="Consultando números de emergencia"
+            />
+          )}
+          {directory?.source === "local" && (
+            <View style={styles.contactsNotice}>
+              <Text style={styles.contactsInfo}>
+                {directory.reason === "empty"
+                  ? "No hay contactos del servidor para tu país. Se muestran las líneas de Perú."
+                  : "No se pudo consultar el directorio del servidor. Se muestran las líneas de Perú."}
+              </Text>
+              <Button
+                title="Reintentar directorio"
+                variant="outline"
+                size="small"
+                onPress={() => setContactsRetry((value) => value + 1)}
+              />
+            </View>
+          )}
+          {!!callError && <Text style={styles.contactsInfo}>{callError}</Text>}
+          <View style={styles.contactsGrid}>
+            {contacts.map((contact, index) => (
+              <Pressable
+                key={index}
+                style={styles.contactCard}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  "Llamar a " + contact.name + ", " + contact.number
+                }
+                onPress={() => handleCall(contact.number)}
+              >
+                <View style={styles.contactLeft}>
+                  <Text style={styles.contactName}>{contact.name}</Text>
+                  <Text style={styles.contactSub}>{contact.description}</Text>
+                </View>
+                <View style={styles.callBadge}>
+                  <Ionicons name="call" size={14} color={Colors.white} />
+                  <Text style={styles.callNumber}>{contact.number}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
         </View>
         {}
         <Button
@@ -299,8 +367,15 @@ const styles = StyleSheet.create({
   kitTextChecked: {
     color: Colors.textSecondary,
   },
+  contactsSection: {
+    marginTop: Spacing.lg,
+    gap: Spacing.md,
+  },
+  contactsTitle: { ...Typography.titleSmall },
+  contactsInfo: { ...Typography.bodySmall, lineHeight: 17 },
+  contactsNotice: { gap: Spacing.sm },
   contactsGrid: {
-    gap: Spacing.sm,
+    gap: Spacing.md,
   },
   contactCard: {
     flexDirection: "row",
@@ -341,6 +416,6 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
   backButton: {
-    marginTop: Spacing.xl,
+    marginTop: Spacing.lg,
   },
 });

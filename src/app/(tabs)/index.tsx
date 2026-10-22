@@ -266,7 +266,7 @@ export default function HomeScreen() {
               <Ionicons name="bag-handle" size={24} color="#2E7D32" />
             </View>
             <Text style={styles.actionTitle}>Misiones y Retos</Text>
-            <Text style={styles.actionSub}>Gana XP y medallas</Text>
+            <Text style={styles.actionSub}>Completa retos de prevención</Text>
           </Pressable>
         </View>
         {}

@@ -2,7 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button, Card, TopBar } from "../../components";
+import { Button, Card } from "../../components";
+import { ProfilePreventionCard } from "../../components/ProfilePreventionCard";
 import { ProfileCreatureCard } from "../../components/creatures/CreatureCards";
 import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
@@ -11,9 +12,10 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   return (
     <SafeAreaView style={styles.safeArea}>
-      <TopBar
-        title="Mi Perfil"
-        rightElement={
+      <View style={styles.profileHeader}>
+        <View style={styles.headerSide} pointerEvents="none" accessible={false} />
+        <Text style={styles.headerTitle} numberOfLines={1} accessibilityRole="header">Mi Perfil</Text>
+        <View style={styles.headerSide}>
           <Pressable
             onPress={() => router.push("/settings")}
             style={styles.gearButton}
@@ -25,8 +27,8 @@ export default function ProfileScreen() {
               color={Colors.primary}
             />
           </Pressable>
-        }
-      />
+        </View>
+      </View>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -62,19 +64,7 @@ export default function ProfileScreen() {
           </Card>
         </View>
         {}
-        <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
-          Medallas e Insignias
-        </Text>
-        <Card style={styles.emptyBadges}>
-          <Ionicons name="ribbon-outline" size={28} color={Colors.textMuted} />
-          <Text style={styles.emptyBadgesText}>
-            {user
-              ? "Todavía no tienes medallas. Completa misiones para ganarlas."
-              : "Inicia sesión para ganar medallas con tus misiones."}
-          </Text>
-        </Card>
-        {}
-        {}
+        <ProfilePreventionCard />
         {user ? (
           <Button
             title="Cerrar Sesión"
@@ -101,9 +91,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  profileHeader: {
+    height: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.lg,
+  },
+  headerSide: { width: 44, alignItems: "flex-end" },
+  headerTitle: { ...Typography.titleSmall, flex: 1, minWidth: 0, textAlign: "center" },
   scrollContent: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
+    paddingTop: Spacing.md,
     paddingBottom: Spacing.xxxl,
   },
   userCard: {
@@ -148,37 +146,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: "600",
   },
-  sectionTitle: {
-    ...Typography.titleSmall,
-    marginBottom: Spacing.md,
-  },
-  badgesRow: {
-    gap: Spacing.md,
-  },
-  badgeCard: {
-    width: 120,
-    padding: Spacing.md,
-    alignItems: "center",
-  },
-  badgeIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: Radii.md,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: Spacing.sm,
-  },
-  badgeName: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: Colors.textPrimary,
-    textAlign: "center",
-  },
-  badgeStatus: {
-    fontSize: 10,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
   settingsCard: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
@@ -206,10 +173,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
   logoutButton: {
-    marginTop: Spacing.xl,
+    marginTop: Spacing.lg,
   },
-  emptyBadges: { padding: Spacing.xl, alignItems: "center", gap: Spacing.sm },
-  emptyBadgesText: { ...Typography.bodySmall, textAlign: "center" },
   gearButton: {
     width: 36,
     height: 36,
