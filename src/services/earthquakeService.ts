@@ -315,6 +315,26 @@ export async function fetchRecentEarthquakes(
   return quakes;
 }
 
+/** Obtiene una página y comprueba si hay otra, respetando el filtro geográfico. */
+export async function fetchRecentEarthquakePage(
+  page: number,
+  pageSize = 10,
+  country?: string,
+): Promise<{ quakes: Quake[]; hasNextPage: boolean }> {
+  if (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1) {
+    throw new Error("Página o tamaño de página inválidos.");
+  }
+
+  // El filtrado por país sucede después de consultar USGS: necesitamos
+  // contar eventos que sí pertenecen al país antes de dividir en páginas.
+  const start = (page - 1) * pageSize;
+  const matches = await fetchRecentEarthquakes(start + pageSize + 1, country);
+  return {
+    quakes: matches.slice(start, start + pageSize),
+    hasNextPage: matches.length > start + pageSize,
+  };
+}
+
 // ==========================================
 // 5. CONSULTA POR ID
 // ==========================================

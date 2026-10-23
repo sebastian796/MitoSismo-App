@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TopBar, QuakeCard } from '../../components';
-import { fetchRecentEarthquakes } from '../../services/earthquakeService';
+import { fetchRecentEarthquakePage } from '../../services/earthquakeService';
 import type { Quake } from '../../types/earthquake';
 import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
 export default function RecentScreen() {
@@ -21,6 +21,9 @@ export default function RecentScreen() {
   const [quakes, setQuakes] = useState<Quake[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const requestId = useRef(0);
   const countries = [
     'Todos',
     'Perú',
@@ -31,26 +34,40 @@ export default function RecentScreen() {
     'Internacional',
   ];
   useEffect(() => {
+    let active = true;
+    const currentRequest = ++requestId.current;
     async function loadEarthquakes() {
       try {
         setLoading(true);
         setError(null);
-        const data =
-          countryFilter === 'Todos'
-            ? await fetchRecentEarthquakes(10)
-            : await fetchRecentEarthquakes(10, countryFilter);
-        setQuakes(data);
+        const result = await fetchRecentEarthquakePage(
+          page,
+          10,
+          countryFilter === 'Todos' ? undefined : countryFilter,
+        );
+        if (!active || currentRequest !== requestId.current) return;
+        setQuakes(result.quakes);
+        setHasNextPage(result.hasNextPage);
       } catch (err) {
+        if (!active || currentRequest !== requestId.current) return;
         console.error('Error al cargar sismos:', err);
         setError('No se pudieron cargar los sismos');
       } finally {
-        setLoading(false);
+        if (active && currentRequest === requestId.current) setLoading(false);
       }
     }
     loadEarthquakes();
     const timer = setInterval(() => { void loadEarthquakes(); }, 60_000);
-    return () => clearInterval(timer);
-  }, [countryFilter]);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [countryFilter, page]);
+
+  const changeCountry = (country: string) => {
+    setPage(1);
+    setCountryFilter(country);
+  };
   const filteredQuakes = quakes.filter((q) => {
     const matchesSearch =
       q.place.toLowerCase().includes(search.toLowerCase()) ||
@@ -128,7 +145,7 @@ export default function RecentScreen() {
             return (
               <Pressable
                 style={[styles.chip, active && styles.chipActive]}
-                onPress={() => setCountryFilter(item)}
+                onPress={() => changeCountry(item)}
               >
                 <Text
                   style={[
@@ -165,6 +182,33 @@ export default function RecentScreen() {
               Prueba ajustando los filtros de búsqueda
             </Text>
           </View>
+        }
+        ListFooterComponent={
+          !error && (quakes.length > 0 || page > 1) ? (
+            <View style={styles.pagination}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Página anterior"
+                disabled={page === 1 || loading}
+                style={[styles.pageButton, (page === 1 || loading) && styles.pageButtonDisabled]}
+                onPress={() => setPage((value) => Math.max(1, value - 1))}
+              >
+                <Ionicons name="chevron-back" size={17} color={Colors.white} />
+                <Text style={styles.pageButtonText}>Anterior</Text>
+              </Pressable>
+              <Text style={styles.pageIndicator}>Página {page}</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Página siguiente"
+                disabled={!hasNextPage || loading}
+                style={[styles.pageButton, (!hasNextPage || loading) && styles.pageButtonDisabled]}
+                onPress={() => setPage((value) => value + 1)}
+              >
+                <Text style={styles.pageButtonText}>Siguiente</Text>
+                <Ionicons name="chevron-forward" size={17} color={Colors.white} />
+              </Pressable>
+            </View>
+          ) : null
         }
       />
     </SafeAreaView>
@@ -225,6 +269,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xxl,
   },
+  pagination: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  pageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    borderRadius: Radii.md,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    gap: 2,
+  },
+  pageButtonDisabled: { opacity: 0.4 },
+  pageButtonText: { color: Colors.white, fontWeight: '600', fontSize: 12 },
+  pageIndicator: { color: Colors.textSecondary, fontSize: 12, fontWeight: '600' },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
