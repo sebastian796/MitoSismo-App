@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   Linking,
   Pressable,
   ScrollView,
@@ -73,13 +74,27 @@ const MODE_INFO: Record<string, string | null> = {
 };
 export default function NotificationsSettingsScreen() {
   const router = useRouter();
-  const { settings, setEnabled, update, sendTest } = useNotificationSettings();
+  const {
+    settings,
+    setEnabled,
+    update,
+    sendTest,
+    hydrated,
+    loading,
+    saving,
+    dirty,
+    error,
+    errorKind,
+    deviceError,
+    retry,
+  } = useNotificationSettings();
   const { isAuthenticated } = useAuth();
   const [feedback, setFeedback] = useState<{
     ok: boolean;
     text: string;
   } | null>(null);
-  const off = !settings.enabled;
+  const unavailable = !isAuthenticated || !hydrated || loading;
+  const off = !settings.enabled || unavailable;
   const modeInfo = MODE_INFO[notificationMode];
   const handleMaster = async (value: boolean) => {
     setFeedback(null);
@@ -151,6 +166,7 @@ export default function NotificationsSettingsScreen() {
             </Text>
           </View>
           <Switch
+            disabled={unavailable}
             value={settings.enabled}
             onValueChange={handleMaster}
             trackColor={{
@@ -166,6 +182,47 @@ export default function NotificationsSettingsScreen() {
             <Text style={styles.infoText}>
               Inicia sesión para configurar tus notificaciones.
             </Text>
+          </View>
+        )}
+        {isAuthenticated && (
+          <View style={styles.infoBox}>
+            {(loading || saving) && <ActivityIndicator color={Colors.accent} />}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.infoText}>
+                {loading
+                  ? "Recuperando tus preferencias del servidor…"
+                  : saving
+                    ? "Guardando cambios en tu cuenta…"
+                    : error
+                      ? error
+                      : dirty
+                        ? "Hay cambios pendientes de confirmar."
+                        : hydrated
+                          ? "Configuración sincronizada con tu cuenta."
+                          : "Configuración no disponible."}
+              </Text>
+              {!!error && (
+                <Button
+                  title={
+                    errorKind === "conflict"
+                      ? "Recargar del servidor"
+                      : "Reintentar"
+                  }
+                  variant="outline"
+                  size="small"
+                  onPress={() => {
+                    void retry();
+                  }}
+                />
+              )}
+              <Text style={styles.rowSub}>
+                Los permisos del navegador o Android son independientes de las
+                preferencias guardadas en tu cuenta.
+              </Text>
+              {!!deviceError && (
+                <Text style={styles.rowSub}>{deviceError}</Text>
+              )}
+            </View>
           </View>
         )}
         {modeInfo && (
@@ -278,6 +335,7 @@ export default function NotificationsSettingsScreen() {
           </Card>
           {}
           <Button
+            disabled={unavailable || saving || dirty}
             title="Enviar notificación de prueba"
             variant="outline"
             onPress={handleTest}
