@@ -48,7 +48,8 @@ function SettingsRow(props: {
 }
 export default function SettingsScreen() {
   const router = useRouter();
-  const { settings } = useNotificationSettings();
+  const { settings, loading, hydrated, error, saving, dirty } =
+    useNotificationSettings();
   return (
     <SafeAreaView style={styles.safeArea}>
       <TopBar title="Configuración" showBack onBack={() => router.back()} />
@@ -61,7 +62,19 @@ export default function SettingsScreen() {
             icon="notifications-outline"
             title="Notificaciones"
             subtitle="Alertas de sismos, consejos y recordatorios"
-            badge={settings.enabled ? "Activadas" : "Desactivadas"}
+            badge={
+              loading
+                ? "Cargando"
+                : error
+                  ? "Sin sincronizar"
+                  : saving || dirty
+                    ? "Pendiente"
+                    : !hydrated
+                      ? "Sin sesión"
+                      : settings.enabled
+                        ? "Activadas"
+                        : "Desactivadas"
+            }
             badgeOn={settings.enabled}
             onPress={() => router.push("/settings/notifications")}
           />

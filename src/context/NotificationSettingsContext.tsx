@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, {
   createContext,
@@ -8,6 +7,7 @@ import React, {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { useQuakeWatcher } from "../hooks/useQuakeWatcher";
 import {
@@ -17,26 +17,34 @@ import {
   syncScheduledReminders,
 } from "../services/notificationService";
 import {
+  fetchUserSettings,
+  saveUserSettings,
+  settingsAccessTokenFor,
+} from "../services/userSettingsService";
+import { UserSettingsSync, copySettings } from "../services/userSettingsSync";
+import {
   DEFAULT_NOTIFICATION_SETTINGS,
   type NotificationSettings,
 } from "../types/notifications";
 import { useAuth } from "./AuthContext";
 
-// Las preferencias se guardan POR USUARIO: cada cuenta tiene su propia clave,
-// así que al cambiar de cuenta no se mezclan ni se heredan las del usuario anterior.
-const STORAGE_PREFIX = "mitosismo:notificationSettings";
-const LEGACY_KEY = "mitosismo:notificationSettings"; // versión anterior (una sola clave global)
-
 type Ctx = {
   settings: NotificationSettings;
   hydrated: boolean;
+  loading: boolean;
+  saving: boolean;
+  dirty: boolean;
+  error: string | null;
+  errorKind: "load" | "save" | "conflict" | null;
+  deviceError: string | null;
+  retry: () => Promise<void>;
   update: (patch: Partial<NotificationSettings>) => Promise<void>;
-  setEnabled: (value: boolean) => Promise<"ok" | "denied" | "auth">;
+  setEnabled: (
+    value: boolean,
+  ) => Promise<"ok" | "denied" | "auth" | "unavailable">;
   sendTest: () => Promise<boolean>;
 };
-
 const NotificationSettingsContext = createContext<Ctx | null>(null);
-
 const FEATURE = "configurar tus notificaciones";
 
 export function NotificationSettingsProvider({
@@ -45,117 +53,148 @@ export function NotificationSettingsProvider({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { user, requireAuth } = useAuth();
-  const storageKey = `${STORAGE_PREFIX}:${user?.id ?? "guest"}`;
-
-  const [settings, setSettings] = useState<NotificationSettings>(
-    DEFAULT_NOTIFICATION_SETTINGS,
-  );
-  const [hydrated, setHydrated] = useState(false);
-  const settingsRef = useRef(settings);
-  const storageKeyRef = useRef(storageKey);
-
-  // Carga las preferencias de la cuenta activa (o las de invitado) cada vez que cambia de usuario.
-  useEffect(() => {
-    storageKeyRef.current = storageKey;
-    let cancelled = false;
-
-    settingsRef.current = DEFAULT_NOTIFICATION_SETTINGS; // nunca se muestran datos del usuario anterior
-    setSettings(DEFAULT_NOTIFICATION_SETTINGS);
-    setHydrated(false);
-
-    (async () => {
-      let loaded = DEFAULT_NOTIFICATION_SETTINGS;
-      try {
-        const raw = await AsyncStorage.getItem(storageKey);
-        if (raw)
-          loaded = { ...DEFAULT_NOTIFICATION_SETTINGS, ...JSON.parse(raw) };
-        AsyncStorage.removeItem(LEGACY_KEY).catch(() => {});
-      } catch (e) {
-        console.warn(
-          "No se pudo cargar la configuración de notificaciones:",
-          e,
-        );
-      }
-      if (cancelled) return;
-      settingsRef.current = loaded;
-      setSettings(loaded);
-      try {
-        await syncScheduledReminders(loaded);
-      } catch (e) {
-        console.warn("No se pudieron programar los recordatorios:", e);
-      }
-      if (!cancelled) setHydrated(true);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [storageKey]);
-
-  useEffect(() => {
-    return subscribeToNotificationTaps((quakeId) => {
-      try {
-        router.push(`/quake/${quakeId}`);
-      } catch {}
+  const { user, loading: authLoading, getAccessToken, requireAuth } = useAuth();
+  const userId = user?.id ?? null;
+  const authRef = useRef({ userId, authLoading, getAccessToken });
+  authRef.current = { userId, authLoading, getAccessToken };
+  const [sync] = useState(() => {
+    const tokenFor = (id: number, signal: AbortSignal) =>
+      settingsAccessTokenFor(id, () => authRef.current, signal);
+    return new UserSettingsSync({
+      read: async (id, signal) =>
+        fetchUserSettings(await tokenFor(id, signal), signal),
+      write: async (id, snapshot, signal) =>
+        saveUserSettings(await tokenFor(id, signal), snapshot, signal),
     });
-  }, [router]);
-
+  });
+  const state = useSyncExternalStore(
+    sync.subscribe,
+    sync.getSnapshot,
+    sync.getSnapshot,
+  );
+  useEffect(() => {
+    void sync.activate(authLoading ? null : userId);
+    return sync.cancel;
+  }, [sync, userId, authLoading]);
+  const current = !authLoading && userId !== null && state.userId === userId;
+  // Esta barrera actúa ya durante el render, antes del efecto de cambio de cuenta.
+  const settings = current ? state.settings : DEFAULT_NOTIFICATION_SETTINGS;
+  const hydrated = current && state.ready;
+  const confirmed =
+    current && state.confirmed
+      ? state.confirmed.settings
+      : DEFAULT_NOTIFICATION_SETTINGS;
+  const [deviceError, setDeviceError] = useState<string | null>(null);
+  const reminders = useRef<Promise<void>>(Promise.resolve());
+  const reminderGeneration = useRef(0);
+  useEffect(() => {
+    const generation = ++reminderGeneration.current;
+    const target = copySettings(
+      hydrated ? confirmed : DEFAULT_NOTIFICATION_SETTINGS,
+    );
+    setDeviceError(null);
+    reminders.current = reminders.current
+      .catch(() => {})
+      .then(async () => {
+        if (generation !== reminderGeneration.current) return;
+        try {
+          await syncScheduledReminders(target);
+        } catch {
+          if (generation === reminderGeneration.current)
+            setDeviceError(
+              "Las preferencias de la cuenta se conservan, pero no se pudieron programar los recordatorios en este dispositivo. Revisa sus permisos.",
+            );
+        }
+      });
+    return () => {
+      reminderGeneration.current++;
+    };
+  }, [confirmed, hydrated, userId]);
+  useEffect(
+    () =>
+      subscribeToNotificationTaps((id) => {
+        router.push(`/quake/${id}`);
+      }),
+    [router],
+  );
   const update = useCallback(
     async (patch: Partial<NotificationSettings>) => {
-      // La acción se protege aquí (no solo en los botones): un invitado no puede modificar nada.
-      if (!requireAuth(FEATURE)) return;
-      const next = { ...settingsRef.current, ...patch };
-      settingsRef.current = next;
-      setSettings(next);
-      try {
-        await AsyncStorage.setItem(storageKeyRef.current, JSON.stringify(next));
-        await syncScheduledReminders(next);
-      } catch (e) {
-        console.warn("No se pudo guardar la configuración:", e);
-      }
+      if (
+        !requireAuth(FEATURE) ||
+        authRef.current.authLoading ||
+        sync.getSnapshot().userId !== authRef.current.userId
+      )
+        return;
+      sync.update(patch);
     },
-    [requireAuth],
+    [requireAuth, sync],
   );
-
   const setEnabled = useCallback(
-    async (value: boolean): Promise<"ok" | "denied" | "auth"> => {
+    async (
+      value: boolean,
+    ): Promise<"ok" | "denied" | "auth" | "unavailable"> => {
       if (!requireAuth(FEATURE)) return "auth";
-      if (value) {
-        const granted = await requestNotificationPermission();
-        if (!granted) return "denied";
-      }
-      await update({ enabled: value });
-      return "ok";
+      const id = authRef.current.userId;
+      if (!sync.getSnapshot().ready || sync.getSnapshot().userId !== id)
+        return "unavailable";
+      if (value && !(await requestNotificationPermission())) return "denied";
+      if (authRef.current.userId !== id || id === null) return "auth";
+      return sync.update({ enabled: value }) ? "ok" : "unavailable";
     },
-    [requireAuth, update],
+    [requireAuth, sync],
   );
-
   const sendTest = useCallback(async () => {
     if (!requireAuth(FEATURE)) return false;
-    return sendTestNotification(settingsRef.current.sound);
-  }, [requireAuth]);
-
-  useQuakeWatcher(settings, hydrated);
-
-  const value = useMemo(
-    () => ({ settings, hydrated, update, setEnabled, sendTest }),
-    [settings, hydrated, update, setEnabled, sendTest],
+    const snapshot = sync.getSnapshot();
+    if (
+      snapshot.userId !== authRef.current.userId ||
+      !snapshot.ready ||
+      !snapshot.confirmed ||
+      !snapshot.confirmed.settings.enabled
+    )
+      return false;
+    return sendTestNotification(snapshot.confirmed.settings.sound);
+  }, [requireAuth, sync]);
+  useQuakeWatcher(confirmed, hydrated);
+  const value = useMemo<Ctx>(
+    () => ({
+      settings,
+      hydrated,
+      loading: authLoading || (current && state.loading),
+      saving: current && state.saving,
+      dirty: current && state.dirty,
+      error: current ? state.error : null,
+      errorKind: current ? state.errorKind : null,
+      deviceError: current ? deviceError : null,
+      retry: sync.retry,
+      update,
+      setEnabled,
+      sendTest,
+    }),
+    [
+      settings,
+      hydrated,
+      authLoading,
+      current,
+      state,
+      deviceError,
+      sync,
+      update,
+      setEnabled,
+      sendTest,
+    ],
   );
-
   return (
     <NotificationSettingsContext.Provider value={value}>
       {children}
     </NotificationSettingsContext.Provider>
   );
 }
-
 export function useNotificationSettings() {
-  const ctx = useContext(NotificationSettingsContext);
-  if (!ctx) {
+  const context = useContext(NotificationSettingsContext);
+  if (!context)
     throw new Error(
       "useNotificationSettings debe usarse dentro de NotificationSettingsProvider",
     );
-  }
-  return ctx;
+  return context;
 }
