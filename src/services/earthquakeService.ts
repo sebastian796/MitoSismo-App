@@ -14,10 +14,6 @@ const GEOJSON_URL = "/geo/countries.geojson";
 // Distancia aproximada permitida alrededor del país.
 const COASTAL_DISTANCE_KM = 150;
 
-// Máximo de consultas para intentar completar el límite.
-const PAGE_SIZE = 200;
-const MAX_PAGES = 5;
-
 // Seguimos usando rectángulos para optimizar la búsqueda.
 const COUNTRY_BOUNDS = {
   Perú: {
@@ -220,10 +216,13 @@ export async function fetchRecentEarthquakes(
   const requiresFiltering = !!selectedCountry || country === "Internacional";
 
   const pageSize = requiresFiltering ? Math.max(100, limit) : limit;
-
-  const maxPages = requiresFiltering ? 3 : 1;
+  const maxPages = requiresFiltering ? 5 : 1;
 
   const excludedCountries = ["Perú", "Chile", "Ecuador", "Colombia", "México"];
+
+  // Consultamos los sismos de los últimos 90 días.
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - 90);
 
   for (let page = 0; page < maxPages; page++) {
     const params = new URLSearchParams({
@@ -231,6 +230,7 @@ export async function fetchRecentEarthquakes(
       orderby: "time",
       limit: String(pageSize),
       offset: String(page * pageSize + 1),
+      starttime: startDate.toISOString(),
     });
 
     // Primera etapa: búsqueda rectangular.
@@ -262,6 +262,7 @@ export async function fetchRecentEarthquakes(
       data = await response.json();
       if (!Array.isArray(data.features))
         throw new Error("Respuesta USGS inválida.");
+
     } finally {
       clearTimeout(timeout);
     }
@@ -306,12 +307,12 @@ export async function fetchRecentEarthquakes(
       }
     }
 
+
     // No hay más eventos disponibles.
     if (data.features.length < pageSize) {
       break;
     }
   }
-
   return quakes;
 }
 
