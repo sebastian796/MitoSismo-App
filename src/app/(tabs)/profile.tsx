@@ -9,15 +9,31 @@ import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, requireAuth } = useAuth();
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.profileHeader}>
-        <View style={styles.headerSide} pointerEvents="none" accessible={false} />
-        <Text style={styles.headerTitle} numberOfLines={1} accessibilityRole="header">Mi Perfil</Text>
+        <View
+          style={styles.headerSide}
+          pointerEvents="none"
+          accessible={false}
+        />
+        <Text
+          style={styles.headerTitle}
+          numberOfLines={1}
+          accessibilityRole="header"
+        >
+          Mi Perfil
+        </Text>
         <View style={styles.headerSide}>
           <Pressable
-            onPress={() => router.push("/settings")}
+            onPress={() => {
+              if (!user) {
+                requireAuth("abrir configuración");
+                return;
+              }
+              router.push("/settings");
+            }}
             style={styles.gearButton}
             hitSlop={8}
           >
@@ -98,7 +114,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   headerSide: { width: 44, alignItems: "flex-end" },
-  headerTitle: { ...Typography.titleSmall, flex: 1, minWidth: 0, textAlign: "center" },
+  headerTitle: {
+    ...Typography.titleSmall,
+    flex: 1,
+    minWidth: 0,
+    textAlign: "center",
+  },
   scrollContent: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,

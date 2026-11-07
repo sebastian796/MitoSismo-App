@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, {
   cancelAnimation,
@@ -11,16 +11,31 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  fetchPublicCreature,
+  getCachedPublicCreature,
+} from "../services/publicContentService";
 
 import { Button, Card, TopBar } from "../components";
 import { CreatureAvatar } from "../components/creatures/CreatureAvatar";
-import { ignisCreature } from "../constants/data";
 import { Colors, Radii, Spacing, Typography } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
 
 export default function CreatureScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const [publicCreature, setPublicCreature] = useState<
+    import("../types/auth").CreatureInfo | null
+  >(getCachedPublicCreature);
+  useEffect(() => {
+    if (!user) {
+      const controller = new AbortController();
+      void fetchPublicCreature(controller.signal)
+        .then(setPublicCreature)
+        .catch(() => setPublicCreature(null));
+      return () => controller.abort();
+    }
+  }, [user?.id]);
 
   const isGuest = user === null;
   const mascota = user?.dataMascota ?? null;
@@ -50,31 +65,33 @@ export default function CreatureScreen() {
   const creatureName = criatura
     ? criatura.nombre
     : isGuest
-      ? ignisCreature.name
+      ? (publicCreature?.nombre ?? "Mascota pública no disponible")
       : "Criatura no disponible";
 
   const creatureTitle = criatura
     ? (criatura.titulo ?? "Mascota Guardiana")
     : isGuest
-      ? ignisCreature.title
+      ? (publicCreature?.titulo ?? "Mascota pública")
       : "No pudimos confirmar los datos de tu criatura.";
 
   const creatureDescription = criatura
     ? (criatura.descripcion ?? "")
     : isGuest
-      ? ignisCreature.description
+      ? (publicCreature?.descripcion ?? "")
       : "Comprueba tu conexión y vuelve a iniciar sesión si el problema continúa.";
 
   const loreTitle = criatura
     ? `Mito de ${criatura.nombre}`
     : isGuest
-      ? "Mito del Fuego y la Pachamama"
+      ? publicCreature?.mitoLore
+        ? `Mito de ${publicCreature.nombre}`
+        : "Historia no disponible"
       : "Información no disponible";
 
   const loreText = criatura
     ? (criatura.mitoLore ?? "Esta criatura aún no tiene un mito registrado.")
     : isGuest
-      ? ignisCreature.mythLore
+      ? (publicCreature?.mitoLore ?? "")
       : "Los datos de tu mascota no se pudieron recuperar.";
 
   return (
@@ -89,10 +106,11 @@ export default function CreatureScreen() {
           <Animated.View style={[styles.avatarContainer, breatheStyle]}>
             {criatura || isGuest ? (
               <CreatureAvatar
-                nombre={criatura ? criatura.nombre : ignisCreature.name}
-                elemento={criatura?.elemento}
+                nombre={criatura ? criatura.nombre : publicCreature?.nombre}
+                elemento={criatura?.elemento ?? publicCreature?.elemento}
                 imageUrl={criatura?.imageUrl}
                 size={100}
+                allowIllustration={!isGuest}
               />
             ) : (
               <Ionicons
@@ -105,7 +123,7 @@ export default function CreatureScreen() {
 
           {isGuest && (
             <View style={styles.guestPill}>
-              <Text style={styles.guestPillText}>Mascota ilustrativa</Text>
+              <Text style={styles.guestPillText}>Mascota pública</Text>
             </View>
           )}
 
@@ -115,10 +133,10 @@ export default function CreatureScreen() {
 
           {(criatura || isGuest) && (
             <View style={styles.tagRow}>
-              {criatura && (
+              {(criatura || (isGuest && publicCreature)) && (
                 <View style={styles.tagPill}>
                   <Text style={styles.tagText}>
-                    {`Elemento: ${criatura.elemento ?? "—"}`}
+                    {`Elemento: ${(criatura ?? publicCreature)?.elemento ?? "—"}`}
                   </Text>
                 </View>
               )}

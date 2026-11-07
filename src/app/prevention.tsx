@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Linking,
   Pressable,
   ScrollView,
@@ -12,8 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, TopBar } from "../components";
+import { API_BASE_URL } from "../config/api";
 import { COUNTRIES } from "../constants/countries";
-import { emergencyContacts } from "../constants/data";
 import { Colors, Radii, Spacing, Typography } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -25,41 +26,134 @@ import {
 } from "../services/publicContentService";
 export default function PreventionScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, getAccessToken, requireAuth } = useAuth();
   const country = user?.pais ?? "PERU";
   const [directory, setDirectory] = useState<EmergencyDirectory | null>(null);
   const [loadingContacts, setLoadingContacts] = useState(true);
   const [contactsRetry, setContactsRetry] = useState(0);
+  const [contactsError, setContactsError] = useState<string | null>(null);
   const [callError, setCallError] = useState<string | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     setDirectory(null);
     setLoadingContacts(true);
+    setContactsError(null);
     void fetchEmergencyDirectory(country, controller.signal)
       .then((data) => {
         if (!controller.signal.aborted) setDirectory(data);
       })
-      .catch(() => {
-        // La salida de pantalla cancela la suscripción; el servicio resuelve los fallos con el directorio local.
+      .catch((cause) => {
+        if (!controller.signal.aborted)
+          setContactsError(
+            cause instanceof Error
+              ? cause.message
+              : "No se pudo cargar el directorio.",
+          );
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoadingContacts(false);
       });
     return () => controller.abort();
   }, [country, contactsRetry]);
-  const contacts = directory?.contacts ?? emergencyContacts;
+  const contacts = directory?.contacts ?? [];
   const contactsCountry =
     COUNTRIES.find((item) => item.value === directory?.country)?.label ??
     "Perú";
   const [activeTab, setActiveTab] = useState<PreventionPhase>("durante");
-  const kitItems = [
-    { title: "Agua embotellada (2L por persona)", checked: true },
-    { title: "Alimentos no perecibles (latas, barras)", checked: true },
-    { title: "Linterna y pilas de repuesto", checked: false },
-    { title: "Botiquín de primeros auxilios", checked: true },
-    { title: "Radio a pilas y silbato de auxilio", checked: false },
-    { title: "Copia de documentos de identidad", checked: false },
-  ];
+  const [kitItems, setKitItems] = useState<
+    {
+      id: number;
+      title: string;
+      description: string;
+      imageUrl?: string | null;
+      checked: boolean;
+    }[]
+  >([]);
+  const [kitLoading, setKitLoading] = useState(true);
+  const [kitError, setKitError] = useState<string | null>(null);
+  const [kitRetry, setKitRetry] = useState(0);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    setKitLoading(true);
+    setKitError(null);
+    void (async () => {
+      try {
+        const token = user ? await getAccessToken() : null;
+        if (user && !token) throw new Error("Sesión no disponible.");
+        const path = user ? "/itemMochila/traerList" : "/itemMochila/listItems";
+        const res = await fetch(API_BASE_URL.replace(/\/$/, "") + path, {
+          headers: {
+            Accept: "application/json",
+            ...(token ? { Authorization: "Bearer " + token } : {}),
+          },
+          signal: ctrl.signal,
+        });
+        if (!res.ok)
+          throw new Error(
+            "No se pudo cargar la mochila (HTTP " + res.status + ").",
+          );
+        const rows = await res.json();
+        if (!Array.isArray(rows))
+          throw new Error("Respuesta inválida del servidor.");
+        if (!ctrl.signal.aborted)
+          setKitItems(
+            rows.map((v: any) => ({
+              id: v.id,
+              title: v.nombre,
+              description: v.descripcion ?? "",
+              imageUrl: v.imageUrl ?? null,
+              checked: !!v.marcado,
+            })),
+          );
+      } catch (e) {
+        if (!ctrl.signal.aborted)
+          setKitError(
+            e instanceof Error ? e.message : "Error al cargar mochila.",
+          );
+      } finally {
+        if (!ctrl.signal.aborted) setKitLoading(false);
+      }
+    })();
+    return () => ctrl.abort();
+  }, [user?.id, kitRetry]);
+  const toggleKitItem = async (id: number) => {
+    if (!user) {
+      requireAuth("marcar elementos de la mochila");
+      return;
+    }
+    const old = kitItems.find((v) => v.id === id);
+    if (!old) return;
+    const token = await getAccessToken();
+    if (!token) {
+      setKitError("Sesión expirada.");
+      return;
+    }
+    const marked = !old.checked;
+    setKitItems((v) =>
+      v.map((x) => (x.id === id ? { ...x, checked: marked } : x)),
+    );
+    try {
+      const res = await fetch(
+        API_BASE_URL.replace(/\/$/, "") + "/itemMochila/actualizar",
+        {
+          method: "PUT",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
+          },
+          body: JSON.stringify([{ id, marcado: marked }]),
+        },
+      );
+      if (!res.ok)
+        throw new Error("No se pudo guardar (HTTP " + res.status + ").");
+    } catch (e) {
+      setKitItems((v) =>
+        v.map((x) => (x.id === id ? { ...x, checked: old.checked } : x)),
+      );
+      setKitError(e instanceof Error ? e.message : "Error al guardar.");
+    }
+  };
   const [tips, setTips] = useState<PreventionTip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -194,20 +288,70 @@ export default function PreventionScreen() {
           Mochila de Emergencia (Kit Esencial)
         </Text>
         <Card style={styles.kitCard}>
-          {kitItems.map((item, index) => (
-            <View key={index} style={styles.kitRow}>
-              <Ionicons
-                name={item.checked ? "checkbox" : "square-outline"}
-                size={20}
-                color={item.checked ? "#2E7D32" : Colors.textMuted}
+          {kitLoading ? (
+            <ActivityIndicator color={Colors.accent} />
+          ) : kitError ? (
+            <View>
+              <Text style={styles.kitText}>{kitError}</Text>
+              <Button
+                title="Reintentar"
+                onPress={() => setKitRetry((value) => value + 1)}
               />
-              <Text
-                style={[styles.kitText, item.checked && styles.kitTextChecked]}
-              >
-                {item.title}
-              </Text>
             </View>
-          ))}
+          ) : (
+            kitItems.map((item) => (
+              <Pressable
+                key={item.id}
+                onPress={() => void toggleKitItem(item.id)}
+                style={[styles.kitRow, !user && styles.kitGuestRow]}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  user
+                    ? `Marcar ${item.title}`
+                    : "Inicia sesión para modificar la mochila"
+                }
+              >
+                {item.imageUrl ? (
+                  <Image
+                    source={{
+                      uri: item.imageUrl.startsWith("http")
+                        ? item.imageUrl
+                        : new URL(
+                            item.imageUrl,
+                            new URL(API_BASE_URL).origin + "/",
+                          ).toString(),
+                    }}
+                    style={styles.kitImage}
+                    resizeMode="contain"
+                  />
+                ) : null}
+                <Ionicons
+                  name={item.checked ? "checkbox" : "square-outline"}
+                  size={20}
+                  color={item.checked ? "#2E7D32" : Colors.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.kitText,
+                    item.checked && styles.kitTextChecked,
+                  ]}
+                >
+                  {item.title}
+                  {!!item.description && (
+                    <Text style={styles.kitDescription}>
+                      {item.description}
+                    </Text>
+                  )}
+                </Text>
+              </Pressable>
+            ))
+          )}
+          {!kitLoading && !kitError && kitItems.length === 0 && (
+            <Text style={styles.kitText}>
+              El servidor no tiene materiales de mochila registrados. Vuelve a
+              intentarlo más tarde.
+            </Text>
+          )}
         </Card>
         {}
         <View style={styles.contactsSection}>
@@ -217,7 +361,7 @@ export default function PreventionScreen() {
           <Text style={styles.contactsInfo}>
             {directory?.source === "backend"
               ? "Directorio del servidor · " + contactsCountry
-              : "Directorio local oficial · Perú · Líneas gratuitas"}
+              : "Directorio del servidor"}
           </Text>
           {loadingContacts && (
             <ActivityIndicator
@@ -225,12 +369,16 @@ export default function PreventionScreen() {
               accessibilityLabel="Consultando números de emergencia"
             />
           )}
-          {directory?.source === "local" && (
+          {contactsError && (
+            <Text style={styles.contactsInfo}>{contactsError}</Text>
+          )}
+
+          {(contactsError || directory?.reason === "empty") && (
             <View style={styles.contactsNotice}>
               <Text style={styles.contactsInfo}>
-                {directory.reason === "empty"
-                  ? "No hay contactos del servidor para tu país. Se muestran las líneas de Perú."
-                  : "No se pudo consultar el directorio del servidor. Se muestran las líneas de Perú."}
+                {directory?.reason === "empty"
+                  ? "No hay contactos del servidor para tu país. No se mostrará información alternativa."
+                  : "No se pudo consultar el directorio del servidor."}
               </Text>
               <Button
                 title="Reintentar directorio"
@@ -242,6 +390,11 @@ export default function PreventionScreen() {
           )}
           {!!callError && <Text style={styles.contactsInfo}>{callError}</Text>}
           <View style={styles.contactsGrid}>
+            {contacts.length === 0 && !loadingContacts && !contactsError && (
+              <Text style={styles.contactsInfo}>
+                No hay números disponibles para este país.
+              </Text>
+            )}
             {contacts.map((contact, index) => (
               <Pressable
                 key={index}
@@ -355,6 +508,9 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     gap: Spacing.md,
   },
+  kitGuestRow: { opacity: 0.42 },
+  kitImage: { width: 44, height: 44, marginRight: Spacing.sm },
+  kitDescription: { ...Typography.bodySmall, color: Colors.textSecondary },
   kitRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -362,6 +518,7 @@ const styles = StyleSheet.create({
   },
   kitText: {
     ...Typography.bodyMedium,
+    flex: 1,
     color: Colors.textPrimary,
   },
   kitTextChecked: {

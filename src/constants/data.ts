@@ -1,4 +1,4 @@
-import type { Creature, EmergencyContact, Mission } from "../types";
+import type { Creature, Mission } from "../types";
 import type { Quake } from "../types/earthquake";
 export const quakes: Quake[] = [
   {
@@ -161,28 +161,3 @@ export const ignisCreature: Creature = {
     },
   ],
 };
-// Directorio local de Perú. Fuentes oficiales verificadas el 21/10/2026:
-// https://www.gob.pe/547-telefonos-de-emergencia
-// https://www.gob.pe/institucion/mtc/noticias/1339625
-// https://www.gob.pe/1013 (SAMU; atención sujeta a cobertura local).
-export const emergencyContacts: EmergencyContact[] = [
-  {
-    name: "Policía Nacional",
-    number: "105",
-    description: "Perú · Línea gratuita de emergencias policiales.",
-    icon: "shield-checkmark",
-  },
-  {
-    name: "Bomberos",
-    number: "116",
-    description: "Perú · Línea gratuita para incendios y rescates.",
-    icon: "flame",
-  },
-  {
-    name: "SAMU",
-    number: "106",
-    description:
-      "Perú · Línea gratuita de urgencias médicas, según cobertura local.",
-    icon: "medkit",
-  },
-];

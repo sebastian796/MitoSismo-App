@@ -1,3 +1,6 @@
+-- Esquema de referencia para una base nueva, no una migración.
+-- No ejecutar en una base existente: usa CREATE TABLE sin IF NOT EXISTS y no
+-- refleja todas las columnas del esquema actual de Supabase.
 CREATE TABLE usuarios (
     id BIGSERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,

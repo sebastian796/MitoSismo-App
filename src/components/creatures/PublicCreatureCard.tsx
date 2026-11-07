@@ -71,7 +71,12 @@ export function PublicCreatureCard({
           No hay una criatura pública disponible.
         </Text>
       ) : (
-        <View style={styles.content}>
+        <Pressable
+          style={styles.content}
+          onPress={() => router.push("/creature")}
+          accessibilityRole="button"
+          accessibilityLabel="Ver detalles de la mascota pública"
+        >
           <View style={styles.textCol}>
             <Text style={[styles.title, isProfile && styles.profileTitle]}>
               {creature.nombre}
@@ -86,7 +91,7 @@ export function PublicCreatureCard({
                 {creature.elemento}
               </Text>
             )}
-            {!!creature.descripcion && (
+            {!!creature.descripcion && isProfile && (
               <Text style={[styles.desc, isProfile && styles.profileDesc]}>
                 {creature.descripcion}
               </Text>
@@ -103,11 +108,11 @@ export function PublicCreatureCard({
           <CreatureAvatar
             nombre={creature.nombre}
             elemento={creature.elemento}
-            imageUrl={creature.imageUrl}
+            imageUrl={null}
             size={isProfile ? 52 : 64}
             allowIllustration={false}
           />
-        </View>
+        </Pressable>
       )}
       {isProfile && (
         <Button

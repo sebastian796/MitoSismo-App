@@ -1,16 +1,20 @@
 package com.mito.sismo.repository;
-import com.mito.sismo.entity.Criatura;
-import com.mito.sismo.entity.enums.Elemento;
-import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.mito.sismo.entity.Criatura;
+import com.mito.sismo.entity.enums.Elemento;
 
 public interface CriaturaRepository extends JpaRepository<Criatura, Integer> {
 
-    Optional<Criatura> findByNombre(String nombre);
+    boolean existsByNombre(String nombre);
 
     List<Criatura> findByElemento(Elemento elemento);
-    boolean existsByNombre(String nombre);
+
+    Optional<Criatura> findByNombre(String nombre);
+
+    Optional<Criatura> findFirstByElementoOrderByIdAsc(Elemento elemento);
 }

@@ -1,5 +1,4 @@
 import { API_BASE_URL } from "../config/api";
-import { emergencyContacts } from "../constants/data";
 import type { EmergencyContact } from "../types";
 import type { CreatureInfo } from "../types/auth";
 
@@ -123,21 +122,28 @@ export async function fetchPreventionTips(
 
 export type EmergencyDirectory = {
   contacts: EmergencyContact[];
-  source: "backend" | "local";
+  source: "backend";
   country: string;
-  reason?: "empty" | "unavailable";
+  reason?: "empty";
 };
+
+function normalizeCountryCode(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .replace(/[\s-]+/g, "_")
+    .toUpperCase();
+}
 
 /** El catálogo existente contiene pais; no existe una ruta filtrada por país. */
 export async function fetchEmergencyDirectory(
   country = "PERU",
   signal?: AbortSignal,
 ): Promise<EmergencyDirectory> {
+  const countryCode = normalizeCountryCode(country);
   try {
-    const data = await publicGet(
-      "/contectoEmergencia/getListContactoEmergencia",
-      signal,
-    );
+    const data = await publicGet("/contactos-emergencia/", signal);
     if (
       !Array.isArray(data) ||
       data.some(
@@ -152,29 +158,35 @@ export async function fetchEmergencyDirectory(
     ) {
       throw new Error("El servidor devolvió un directorio inválido.");
     }
+    const seenNumbers = new Set<string>();
     const contacts: EmergencyContact[] = data
-      .filter((contact) => contact.pais === country)
+      .filter((contact) => normalizeCountryCode(contact.pais) === countryCode)
       .map((contact) => ({
         name: contact.nombre,
         number: contact.numero.replace(/[ ()-]/g, ""),
         description:
           typeof contact.descripcion === "string" ? contact.descripcion : "",
         icon: typeof contact.icono === "string" ? contact.icono : "call",
-      }));
-    if (contacts.length) return { contacts, source: "backend", country };
+      }))
+      .filter((contact) => {
+        if (seenNumbers.has(contact.number)) return false;
+        seenNumbers.add(contact.number);
+        return true;
+      });
+    if (contacts.length)
+      return { contacts, source: "backend", country: countryCode };
     return {
-      contacts: emergencyContacts,
-      source: "local",
-      country: "PERU",
+      contacts: [],
+      source: "backend",
+      country: countryCode,
       reason: "empty",
     };
   } catch (error) {
     if (signal?.aborted) throw error;
-    return {
-      contacts: emergencyContacts,
-      source: "local",
-      country: "PERU",
-      reason: "unavailable",
-    };
+    throw error;
   }
+}
+
+export function getCachedPublicCreature(): CreatureInfo | null {
+  return cachedCreature;
 }

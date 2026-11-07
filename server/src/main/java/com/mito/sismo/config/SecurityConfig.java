@@ -35,6 +35,33 @@ public class SecurityConfig {
     }
 
     @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    // Configuración CORS para permitir peticiones desde aplicaciones móviles y
+    // clientes web
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(List.of("*")); // Permite peticiones de desarrollo
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 // Habilitar CORS y deshabilitar CSRF (API stateless RESTful)
@@ -62,6 +89,9 @@ public class SecurityConfig {
                                 "/api/prevencion/despues")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/contactos-emergencia/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/itemMochila/listItems").permitAll()
+                        // Imágenes públicas referenciadas por criatura e ítems de catálogo.
+                        .requestMatchers(HttpMethod.GET, "/images/**").permitAll()
 
                         // Endpoints que requieren usuario autenticado
                         .requestMatchers("/api/criatura/**").authenticated()
@@ -78,32 +108,5 @@ public class SecurityConfig {
                 // Registrar filtro JWT antes del UsernamePasswordAuthenticationFilter
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
-    }
-
-    // Configuración CORS para permitir peticiones desde aplicaciones móviles y
-    // clientes web
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*")); // Permite peticiones de desarrollo
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With"));
-        configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
     }
 }

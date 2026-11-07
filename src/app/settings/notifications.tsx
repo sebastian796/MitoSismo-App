@@ -20,7 +20,6 @@ import { notificationMode } from "../../services/notificationService";
 import {
   MAGNITUDE_OPTIONS,
   NOTIFICATION_COUNTRIES,
-  TIPS_HOUR_OPTIONS,
 } from "../../types/notifications";
 function SectionLabel({ children }: { children: string }) {
   return <Text style={styles.sectionLabel}>{children}</Text>;
@@ -300,21 +299,6 @@ export default function NotificationsSettingsScreen() {
               value={settings.tips}
               onChange={(v) => update({ tips: v })}
             />
-            {settings.tips && (
-              <View style={styles.options}>
-                <Text style={styles.optionLabel}>Hora del consejo</Text>
-                <View style={styles.chips}>
-                  {TIPS_HOUR_OPTIONS.map((h) => (
-                    <Chip
-                      key={h}
-                      label={`${h}:00`}
-                      selected={settings.tipsHour === h}
-                      onPress={() => update({ tipsHour: h })}
-                    />
-                  ))}
-                </View>
-              </View>
-            )}
             <View style={styles.divider} />
             <SwitchRow
               title="Recordatorio de misiones"

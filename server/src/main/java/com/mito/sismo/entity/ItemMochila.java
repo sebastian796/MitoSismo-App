@@ -22,6 +22,8 @@ public class ItemMochila {
     private Integer id;
     private String nombre;
     private String descripcion;
+    @Column(name = "image_url")
+    private String imageUrl;
 
     @Builder.Default
     private Boolean obligatorio = true;
