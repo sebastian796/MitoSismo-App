@@ -1,6 +1,5 @@
 import { API_BASE_URL } from "../config/api";
 import type { Mission } from "../types";
-
 type BackendMission = {
   id: number;
   titulo: string;
@@ -11,70 +10,72 @@ type BackendMission = {
   completada: boolean | null;
 };
 
-async function authenticatedFetch(
+type InfoMisionResponse = {
+  idMision?: number;
+  completada?: boolean;
+  xpGanada?: number;
+  mensaje?: string;
+};
+
+async function authenticatedFetch<T>(
   endpoint: string,
   token: string,
   options: RequestInit = {},
-) {
-  return fetch(`${API_BASE_URL}${endpoint}`, {
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
-      ...options.headers,
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      ...options.headers,
     },
   });
+
+  if (!response.ok) {
+    let errorMessage = `Error HTTP ${response.status}`;
+    try {
+      const errorData = await response.json();
+      if (errorData?.message) {
+        errorMessage = errorData.message;
+      }
+    } catch {
+      // Si el cuerpo no es JSON, conservamos el código HTTP
+    }
+    throw new Error(errorMessage);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json() as Promise<T>;
 }
 
 function mapMission(mission: BackendMission): Mission {
+  const isCompleted = Boolean(mission.completada);
   return {
     id: mission.id,
     title: mission.titulo,
     description: mission.descripcion,
-    xp: mission.xpRecompensa,
-    completed: mission.completada ?? false,
-    progress: mission.completada ? 100 : 0,
+    xp: mission.xpRecompensa ?? 0,
+    completed: isCompleted,
+    progress: isCompleted ? 100 : 0,
     icon: "flag",
   };
 }
 
 export async function getUserMissions(token: string): Promise<Mission[]> {
-  const response = await authenticatedFetch("/misiones", token);
-
-  if (!response.ok) {
-    throw new Error(`Error al obtener misiones: ${response.status}`);
-  }
-
-  const data: BackendMission[] = await response.json();
+  const data = await authenticatedFetch<BackendMission[]>("/misiones", token);
   return data.map(mapMission);
 }
 
 export async function completeMission(
   id: number,
   token: string,
-): Promise<void> {
-  const response = await authenticatedFetch(
-    `/misiones/completada?idMision=${id}`,
+): Promise<InfoMisionResponse> {
+  return authenticatedFetch<InfoMisionResponse>(
+    `/misiones/completada?idMision=${encodeURIComponent(id)}`,
     token,
     { method: "POST" },
   );
-
-  if (!response.ok) {
-    throw new Error(`Error al completar misión: ${response.status}`);
-  }
-}
-
-export async function uncompleteMission(
-  id: number,
-  token: string,
-): Promise<void> {
-  const response = await authenticatedFetch(
-    `/misiones/descompletar?idMision=${id}`,
-    token,
-    { method: "POST" },
-  );
-
-  if (!response.ok) {
-    throw new Error(`Error al descompletar misión: ${response.status}`);
-  }
 }

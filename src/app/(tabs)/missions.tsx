@@ -1,13 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
-import {getUserMissions, completeMission, uncompleteMission, } from "../../services/missionsService";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import {getUserMissions, completeMission, } from "../../services/missionsService";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, TopBar } from "../../components";
 import { MissionsAccessGuard } from "../../components/auth/MissionsAccessGuard";
 import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { Mission } from "../../types";
+
 export default function MissionsScreen() {
   return (
     <MissionsAccessGuard>
@@ -17,88 +18,110 @@ export default function MissionsScreen() {
 }
 
 function AuthenticatedMissionsScreen() {
-  const { user, requireAuth, getAccessToken, refreshAccount } = useAuth();
+  const { user, getAccessToken, refreshAccount } = useAuth();
 
   const [missionsList, setMissionsList] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [updatingIds, setUpdatingIds] = useState<Record<number, boolean>>({});
 
-  useEffect(() => {
-    const loadMissions = async () => {
+  const loadMissions = useCallback(
+    async (isMounted?: () => boolean) => {
       try {
         setLoading(true);
         setError(null);
 
         const token = await getAccessToken();
-
         if (!token) {
           throw new Error("No se encontró una sesión válida.");
         }
 
         const data = await getUserMissions(token);
-        setMissionsList(data);
-
+        if (!isMounted || isMounted()) {
+          setMissionsList(data);
+        }
       } catch (err) {
         console.error("Error cargando misiones:", err);
-        setError("No se pudieron cargar las misiones.");
+        if (!isMounted || isMounted()) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "No se pudieron cargar las misiones.",
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!isMounted || isMounted()) {
+          setLoading(false);
+        }
       }
-    };
+    },
+    [getAccessToken],
+  );
 
-    loadMissions();
-  }, []);
+  useEffect(() => {
+    let mounted = true;
+    loadMissions(() => mounted);
+    return () => {
+      mounted = false;
+    };
+  }, [loadMissions]);
 
   // Nivel y XP reales de la cuenta
   const mascota = user?.dataMascota ?? null;
-  const nivel = mascota?.nivel ?? 1;
-  const totalXp = mascota?.xpActual ?? 0;
-  const nextLevelThreshold = (nivel + 1) * (nivel + 1) * 10;
+  const nivel = Math.max(1, mascota?.nivel ?? 1);
+  const totalXp = Math.max(0, mascota?.xpActual ?? 0);
+  const nextLevelThreshold = Math.max(1, (nivel + 1) * (nivel + 1) * 10);
 
   const progressPercent = Math.min(
     100,
-    Math.round((totalXp / nextLevelThreshold) * 100),
+    Math.max(0, Math.round((totalXp / nextLevelThreshold) * 100)),
   );
 
-  const toggleMission = async (id: number) => {
-    if (!requireAuth("completar misiones y ganar XP")) return;
+  const handleCompleteMission = async (mission: Mission) => {
+    // Una vez completada o mientras se está procesando, no permite volver a ejecutarse
+    if (mission.completed || updatingIds[mission.id]) return;
 
-    const mission = missionsList.find((m) => m.id === id);
-
-    if (!mission) return;
+    setUpdatingIds((prev) => ({ ...prev, [mission.id]: true }));
+    setError(null);
 
     try {
       const token = await getAccessToken();
-
       if (!token) {
         throw new Error("No se encontró una sesión válida.");
       }
 
-      if (mission.completed) {
-        await uncompleteMission(id, token);
-      } else {
-        await completeMission(id, token);
-      }
+      await completeMission(mission.id, token);
 
       setMissionsList((prev) =>
         prev.map((m) =>
-          m.id === id
+          m.id === mission.id
             ? {
                 ...m,
-                completed: !mission.completed,
-                progress: mission.completed ? 0 : 100,
+                completed: true,
+                progress: 100,
               }
             : m,
         ),
       );
 
       await refreshAccount();
-
     } catch (err) {
-      console.error("Error actualizando misión:", err);
-      setError("No se pudo actualizar la misión. Inténtalo nuevamente.");
+      console.error("Error completando misión:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo completar la misión. Inténtalo nuevamente.",
+      );
+    } finally {
+      setUpdatingIds((prev) => {
+        const next = { ...prev };
+        delete next[mission.id];
+        return next;
+      });
     }
   };
+
+  const completedCount = missionsList.filter((m) => m.completed).length;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -107,7 +130,6 @@ function AuthenticatedMissionsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {}
         <Card style={styles.xpCard}>
           <View style={styles.xpHeader}>
             <View>
@@ -127,7 +149,7 @@ function AuthenticatedMissionsScreen() {
               </Text>
             </View>
           </View>
-          {}
+
           <View style={styles.progressBarBg}>
             <View
               style={[styles.progressBarFill, { width: `${progressPercent}%` }]}
@@ -142,89 +164,124 @@ function AuthenticatedMissionsScreen() {
             <Text style={styles.progressPercent}>{progressPercent}%</Text>
           </View>
         </Card>
-        {}
+
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Misiones Disponibles</Text>
           <Text style={styles.sectionCount}>
-            {missionsList.filter((m) => m.completed).length}/
-            {missionsList.length} Completadas
+            {completedCount}/{missionsList.length} Completadas
           </Text>
         </View>
-        {}
+
         {loading && (
-          <Text style={{ color: Colors.text }}>
-            Cargando misiones...
-          </Text>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={Colors.accent} />
+            <Text style={styles.loadingText}>Cargando misiones...</Text>
+          </View>
         )}
 
         {error && (
-          <Text style={{ color: "red" }}>
-            {error}
-          </Text>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            {!loading && missionsList.length === 0 && (
+              <Pressable
+                onPress={() => loadMissions()}
+                style={styles.retryButton}
+              >
+                <Text style={styles.retryText}>Reintentar</Text>
+              </Pressable>
+            )}
+          </View>
         )}
-        {missionsList.map((m) => (
-          <Pressable key={m.id} onPress={() => toggleMission(m.id)}>
-            <Card
-              style={[
-                styles.missionCard,
-                m.completed && styles.missionCompletedCard,
-              ]}
-            >
-              <View style={styles.missionRow}>
-                {}
-                <View
+
+        {!loading &&
+          missionsList.map((m) => {
+            const isUpdating = Boolean(updatingIds[m.id]);
+            const isDisabled = m.completed || isUpdating;
+
+            return (
+              <Pressable
+                key={m.id}
+                onPress={() => handleCompleteMission(m)}
+                disabled={isDisabled}
+              >
+                <Card
                   style={[
-                    styles.checkbox,
-                    m.completed && styles.checkboxCompleted,
+                    styles.missionCard,
+                    m.completed && styles.missionCompletedCard,
+                    isUpdating && styles.missionCardUpdating,
                   ]}
                 >
-                  {m.completed && (
-                    <Ionicons name="checkmark" size={18} color={Colors.white} />
-                  )}
-                </View>
-                {}
-                <View style={styles.missionInfo}>
-                  <View style={styles.titleRow}>
-                    <Text
-                      style={[
-                        styles.missionTitle,
-                        m.completed && styles.missionTitleCompleted,
-                      ]}
-                    >
-                      {m.title}
-                    </Text>
-                  </View>
-                  <Text style={styles.missionDesc}>{m.description}</Text>
-                  {}
-                  <View style={styles.itemProgressBg}>
+                  <View style={styles.missionRow}>
                     <View
                       style={[
-                        styles.itemProgressFill,
-                        { width: `${m.progress}%` },
+                        styles.checkbox,
+                        m.completed && styles.checkboxCompleted,
                       ]}
-                    />
-                  </View>
-                  {}
-                  <View style={styles.rewardRow}>
-                    <View style={styles.rewardPill}>
-                      <Ionicons name="star" size={12} color={Colors.accent} />
-                      <Text style={styles.rewardText}>+{m.xp} XP</Text>
+                    >
+                      {isUpdating ? (
+                        <ActivityIndicator size="small" color={Colors.accent} />
+                      ) : (
+                        m.completed && (
+                          <Ionicons
+                            name="checkmark"
+                            size={18}
+                            color={Colors.white}
+                          />
+                        )
+                      )}
                     </View>
-                    {m.completed ? (
-                      <Text style={styles.statusCompletedText}>
-                        ¡Completado!
-                      </Text>
-                    ) : (
-                      <Text style={styles.statusPendingText}>
-                        Toca para completar
-                      </Text>
-                    )}
+
+                    <View style={styles.missionInfo}>
+                      <View style={styles.titleRow}>
+                        <Text
+                          style={[
+                            styles.missionTitle,
+                            m.completed && styles.missionTitleCompleted,
+                          ]}
+                        >
+                          {m.title}
+                        </Text>
+                      </View>
+                      <Text style={styles.missionDesc}>{m.description}</Text>
+
+                      <View style={styles.itemProgressBg}>
+                        <View
+                          style={[
+                            styles.itemProgressFill,
+                            { width: `${m.progress}%` },
+                          ]}
+                        />
+                      </View>
+
+                      <View style={styles.rewardRow}>
+                        <View style={styles.rewardPill}>
+                          <Ionicons
+                            name="star"
+                            size={12}
+                            color={Colors.accent}
+                          />
+                          <Text style={styles.rewardText}>+{m.xp} XP</Text>
+                        </View>
+                        {isUpdating ? (
+                          <Text style={styles.statusPendingText}>
+                            Completando...
+                          </Text>
+                        ) : m.completed ? (
+                          <Text style={styles.statusCompletedText}>
+                            ¡Completado!
+                          </Text>
+                        ) : (
+                          <Text style={styles.statusPendingText}>
+                            Toca para completar
+                          </Text>
+                        )}
+                      </View>
+                    </View>
                   </View>
-                </View>
-              </View>
-            </Card>
-          </Pressable>
-        ))}
+                </Card>
+              </Pressable>
+            );
+          })}
       </ScrollView>
     </SafeAreaView>
   );
@@ -404,5 +461,38 @@ const styles = StyleSheet.create({
   statusPendingText: {
     fontSize: 11,
     color: Colors.textSecondary,
+  },
+  loadingContainer: {
+    paddingVertical: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  loadingText: {
+    color: 'black',
+    fontSize: 14,
+  },
+  errorContainer: {
+    marginBottom: 12,
+    gap: 8,
+  },
+  errorText: {
+    color: "#DC2626",
+    fontSize: 14,
+  },
+  retryButton: {
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: Colors.accent,
+  },
+  retryText: {
+    color: Colors.white,
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  missionCardUpdating: {
+    opacity: 0.65,
   },
 });
