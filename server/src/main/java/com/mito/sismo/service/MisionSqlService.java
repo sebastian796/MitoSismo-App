@@ -82,4 +82,33 @@ public class MisionSqlService {
                 + "  AND um2.estado <> 'UNLOCKED'";
         jdbc.update(sql, completedMisionId, usuarioId, usuarioId);
     }
+
+    //actualiza los desbloqueos
+    @Transactional
+    public void reconcileStatesForUsuario(Long usuarioId) {
+        String sql = """
+        UPDATE usuario_misiones um
+        SET estado = CASE
+            WHEN NOT EXISTS (
+                SELECT 1
+                FROM mission_prerequisites mp
+                WHERE mp.mission_id = um.mision_id
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM usuario_misiones prereq
+                      WHERE prereq.usuario_id = um.usuario_id
+                        AND prereq.mision_id = mp.prerequisite_id
+                        AND prereq.completada = TRUE
+                  )
+            )
+            THEN 'UNLOCKED'
+            ELSE 'LOCKED'
+        END
+        WHERE um.usuario_id = ?
+          AND um.completada = FALSE
+    """;
+
+        jdbc.update(sql, usuarioId);
+    }
+
 }

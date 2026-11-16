@@ -117,56 +117,81 @@ public class MisionService {
     // Validar y marcar una misión como completada, asignando experiencia a la mascota
     @Transactional
     public InfoMisionDTO marcarCompletado(Long idMision, Long userId) {
-        // Buscar por relación usuario y mision_id catálogo con JOIN FETCH; fallback por id de registro UsuarioMision
-        Optional<UsuarioMision> misionUserOpt = userMisionRepository
-                .findByUsuarioIdAndMisionIdWithDetails(userId, idMision.intValue());
+        UsuarioMision misionUser = userMisionRepository
+                .findByUsuarioIdAndMisionIdWithDetails(userId, idMision.intValue())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No se encontró esta misión para el usuario."
+                ));
 
-        UsuarioMision misionUser;
-        if (misionUserOpt.isPresent()) {
-            misionUser = misionUserOpt.get();
-        } else {
-            misionUser = userMisionRepository.findById(idMision)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "No se encontró la misión solicitada con ID: " + idMision));
+        if (Boolean.TRUE.equals(misionUser.getCompletada())
+                || Boolean.TRUE.equals(misionUser.getXpOtorgada())) {
+            throw new IllegalArgumentException(
+                    "Esta misión ya fue completada previamente."
+            );
         }
 
-        // Validación de pertenencia al usuario autenticado
-        if (!userId.equals(misionUser.getUsuario().getId())) {
-            throw new UnauthorizedAccessException();
+        if (misionUser.getEstado() == Estado.LOCKED) {
+            throw new IllegalArgumentException(
+                    "Debes completar los prerrequisitos de esta misión."
+            );
         }
 
-        // Validación de no duplicar completado ni experiencia
-        if (Boolean.TRUE.equals(misionUser.getCompletada())) {
-            throw new IllegalArgumentException("Esta misión ya fue completada previamente.");
-        }
+        Integer xp = misionUser.getMision().getXpRecompensa();
 
-        // Otorgar experiencia a la criatura activa del usuario
-        try {
-            UsuarioCriatura mascota = criaturaService.getCriaturaUsuario(userId);
-            if (mascota != null && misionUser.getMision() != null && misionUser.getMision().getXpRecompensa() != null) {
-                criaturaService.recalcularXpCriatura(mascota, misionUser.getMision().getXpRecompensa());
-            }
-        } catch (ResourceNotFoundException e) {
-            log.warn("El usuario con ID {} no cuenta con criatura asignada para otorgar XP.", userId);
-        } catch (Exception e) {
-            log.error("Error al recalcular XP de criatura para usuario {}: {}", userId, e.getMessage());
-        }
+        // Otorgar XP dentro de la misma transacción.
+        UsuarioCriatura mascota = criaturaService.getCriaturaUsuario(userId);
+        criaturaService.recalcularXpCriatura(mascota, xp);
 
-        // Actualizar el estado de la misión
         misionUser.setProgreso(100);
         misionUser.setCompletada(true);
         misionUser.setFechaCompletada(Instant.now());
         misionUser.setEstado(Estado.COMPLETED);
         misionUser.setXpOtorgada(true);
 
-        UsuarioMision misionCompleta = userMisionRepository.save(misionUser);
+        UsuarioMision guardada = userMisionRepository.save(misionUser);
 
-        // Actualizar desbloqueo únicamente para misiones que dependían de la completada
-        Integer catalogMisionId = misionUser.getMision() != null ? misionUser.getMision().getId() : idMision.intValue();
-        jdbc.reconcileUnlocksForUsuario(userId, catalogMisionId);
+        jdbc.reconcileStatesForUsuario(userId);
 
-        return InfoMisionDTO.fromEntity(misionCompleta);
+        return InfoMisionDTO.fromEntity(guardada);
     }
+
+
+    @Transactional
+    public InfoMisionDTO descompletarMision(Long idMision, Long userId) {
+        UsuarioMision misionUser = userMisionRepository
+                .findByUsuarioIdAndMisionIdWithDetails(userId, idMision.intValue())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No se encontró esta misión para el usuario."
+                ));
+
+        if (!Boolean.TRUE.equals(misionUser.getCompletada())) {
+            throw new IllegalArgumentException(
+                    "Esta misión todavía no está completada."
+            );
+        }
+
+        // Descontar XP solamente si esta misión otorgó la recompensa.
+        if (Boolean.TRUE.equals(misionUser.getXpOtorgada())) {
+            Integer xp = misionUser.getMision().getXpRecompensa();
+
+            UsuarioCriatura mascota = criaturaService.getCriaturaUsuario(userId);
+            criaturaService.descontarXpCriatura(mascota, xp);
+        }
+
+        misionUser.setProgreso(0);
+        misionUser.setCompletada(false);
+        misionUser.setFechaCompletada(null);
+        misionUser.setEstado(Estado.LOCKED);
+        misionUser.setXpOtorgada(false);
+
+        UsuarioMision guardada = userMisionRepository.save(misionUser);
+
+        // Recalcular las misiones que siguen disponibles.
+        jdbc.reconcileStatesForUsuario(userId);
+
+        return InfoMisionDTO.fromEntity(guardada);
+    }
+
 
     // Listar todo el catálogo público de misiones
     @Transactional(readOnly = true)

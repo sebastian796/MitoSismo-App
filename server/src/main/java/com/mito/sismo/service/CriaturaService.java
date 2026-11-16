@@ -1,3 +1,4 @@
+
 package com.mito.sismo.service;
 
 import java.time.Instant;
@@ -10,9 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.mito.sismo.dto.entidades.CriaturaDTO;
 import com.mito.sismo.dto.entidades.CriaturaDataDTO;
 import com.mito.sismo.dto.request.CriaturaRequest;
-import com.mito.sismo.entity.Criatura;
-import com.mito.sismo.entity.Usuario;
-import com.mito.sismo.entity.UsuarioCriatura;
+import com.mito.sismo.entity.*;
 import com.mito.sismo.entity.enums.Elemento;
 import com.mito.sismo.exception.ResourceNotFoundException;
 import com.mito.sismo.repository.CriaturaRepository;
@@ -21,8 +20,8 @@ import com.mito.sismo.repository.UsuarioCriaturaRepository;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Servicio para la gestión de criaturas mitológicas protectoras y el cálculo de
- * nivel y experiencia.
+ * Servicio para la gestión de criaturas mitológicas protectoras
+ * y el cálculo de nivel y experiencia.
  */
 @Service
 @RequiredArgsConstructor
@@ -31,20 +30,16 @@ public class CriaturaService {
     private static final Integer NIVEL_MAXIMO = 50;
     private static final Double FACTOR = 10.0;
 
-    private static Integer xpParaNivel(int nivel) {
-        return (int) (nivel * nivel * FACTOR);
-    }
-
     private final CriaturaRepository criaturaRepository;
     private final UsuarioCriaturaRepository userCriaturaRepository;
-
     private final UsuarioService userService;
 
     // Modificar datos de una criatura existente
     @Transactional
     public CriaturaDTO actualizarCriatura(Integer id, CriaturaRequest request) {
         Criatura existente = criaturaRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Criatura no encontrada con ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Criatura no encontrada con ID: " + id));
 
         existente.setNombre(request.getNombre());
         existente.setTitulo(request.getTitulo());
@@ -58,8 +53,10 @@ public class CriaturaService {
 
     // Cálculo matemático de nivel a partir de los puntos de experiencia
     public Integer calcularNivel(Integer xpActual) {
-        if (xpActual == null || xpActual <= 0)
+        if (xpActual == null || xpActual <= 0) {
             return 1;
+        }
+
         int nivel = (int) Math.sqrt(xpActual / FACTOR);
         return Math.max(1, Math.min(nivel, NIVEL_MAXIMO));
     }
@@ -84,8 +81,10 @@ public class CriaturaService {
     @Transactional
     public void eliminarCriatura(Integer id) {
         if (!criaturaRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Criatura no encontrada con ID: " + id);
+            throw new ResourceNotFoundException(
+                    "Criatura no encontrada con ID: " + id);
         }
+
         criaturaRepository.deleteById(id);
     }
 
@@ -94,15 +93,14 @@ public class CriaturaService {
     public UsuarioCriatura getCriaturaUsuario(Long usuarioId) {
         return userCriaturaRepository.findByUsuarioId(usuarioId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "El usuario con ID " + usuarioId + " no tiene criatura asignada."));
+                        "El usuario con ID " + usuarioId
+                                + " no tiene criatura asignada."));
     }
 
-    // Obtener criatura de prueba (público) de forma segura evitando
-    // NoSuchElementException
+    // Obtener criatura de prueba (público).
+    // La mascota pública debe ser una criatura de Aire y estable entre consultas.
     @Transactional(readOnly = true)
     public CriaturaDTO mostrarCriaturaPrueba() {
-        // La mascota pública debe ser una criatura de Aire y estable entre consultas.
-        // No sustituirla por otro elemento si el catálogo está incompleto.
         return criaturaRepository.findFirstByElementoOrderByIdAsc(Elemento.AIRE)
                 .map(CriaturaDTO::fromEntity)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -113,6 +111,7 @@ public class CriaturaService {
     @Transactional(readOnly = true)
     public List<CriaturaDTO> mostrarCriaturas() {
         List<Criatura> listCriatura = criaturaRepository.findAll();
+
         return listCriatura.stream()
                 .filter(criatura -> criatura.getElemento() != Elemento.AIRE)
                 .map(CriaturaDTO::fromEntity)
@@ -123,38 +122,82 @@ public class CriaturaService {
     @Transactional(readOnly = true)
     public CriaturaDataDTO mostrarMyCriatura(String authHeader) {
         Usuario user = userService.extraerUsuarioEmailToken(authHeader);
+
         UsuarioCriatura criatura = userCriaturaRepository.findByUsuarioId(user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "No se encontró una criatura vinculada al usuario: " + user.getId()));
+                        "No se encontró una criatura vinculada al usuario: "
+                                + user.getId()));
 
-        int[] xpData = progreso(criatura.getXpActual()); // [0]=Nivel, [1]=XpMinima, [2]=XpMaxima
-        return CriaturaDataDTO.fromEntity(criatura, xpData[1], xpData[2]);
+        int[] xpData = progreso(criatura.getXpActual());
+
+        return CriaturaDataDTO.fromEntity(
+                criatura,
+                xpData[1],
+                xpData[2]
+        );
     }
 
     // Obtener criatura del catálogo por ID
     @Transactional(readOnly = true)
     public CriaturaDTO obtenerPorId(Integer id) {
         Criatura criatura = criaturaRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Criatura no encontrada con ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Criatura no encontrada con ID: " + id));
+
         return CriaturaDTO.fromEntity(criatura);
     }
 
+    // Calcular progreso de experiencia de la criatura
     public int[] progreso(Integer xpActual) {
         int xp = (xpActual != null) ? xpActual : 0;
+
         Integer nivel = calcularNivel(xp);
         Integer xpMin = xpParaNivel(nivel);
         Integer xpMax = xpParaNivel(Math.min(nivel + 1, NIVEL_MAXIMO));
-        return new int[] { nivel, xp - xpMin, xpMax - xpMin };
+
+        return new int[] {
+                nivel,
+                xp - xpMin,
+                xpMax - xpMin
+        };
+    }
+
+    // Calcular XP mínimo requerido para alcanzar un nivel
+    private static Integer xpParaNivel(int nivel) {
+        return (int) (nivel * nivel * FACTOR);
     }
 
     // Recalcular la experiencia y subir nivel a la criatura tras completar misión
     @Transactional
-    public UsuarioCriatura recalcularXpCriatura(UsuarioCriatura cria, Integer xpRecompensa) {
-        int xpTotal = (cria.getXpActual() != null ? cria.getXpActual() : 0) + (xpRecompensa != null ? xpRecompensa : 0);
+    public UsuarioCriatura recalcularXpCriatura(
+            UsuarioCriatura cria,
+            Integer xpRecompensa
+    ) {
+        int xpTotal = (cria.getXpActual() != null ? cria.getXpActual() : 0)
+                + (xpRecompensa != null ? xpRecompensa : 0);
+
         int nuevoNivel = calcularNivel(xpTotal);
 
         cria.setXpActual(xpTotal);
         cria.setNivel(nuevoNivel);
+
+        return userCriaturaRepository.save(cria);
+    }
+
+    // Descontar XP de la criatura cuando se desmarca una misión
+    @Transactional
+    public UsuarioCriatura descontarXpCriatura(
+            UsuarioCriatura cria,
+            Integer xpRecompensa
+    ) {
+        int xpActual = cria.getXpActual() != null ? cria.getXpActual() : 0;
+        int xpDescontada = xpRecompensa != null ? xpRecompensa : 0;
+
+        int nuevoXp = Math.max(0, xpActual - xpDescontada);
+
+        cria.setXpActual(nuevoXp);
+        cria.setNivel(calcularNivel(nuevoXp));
+
         return userCriaturaRepository.save(cria);
     }
 }

@@ -60,6 +60,21 @@ public class MisionController {
         return ResponseEntity.ok(completado);
     }
 
+    //desmarca la mission
+    @PostMapping("/descompletar")
+    public ResponseEntity<InfoMisionDTO> descompletarMision(
+            @RequestParam Long idMision,
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @RequestHeader(value = "Authorization", required = false) String authHeader
+    ) {
+        Long userId = resolveUserId(principal, authHeader);
+        InfoMisionDTO resultado =
+                misionService.descompletarMision(idMision, userId);
+
+        return ResponseEntity.ok(resultado);
+    }
+
+
     // Catálogo público de misiones maestras
     @GetMapping("/publico")
     public ResponseEntity<List<MisionDTO>> listarCatalogoPublico() {
