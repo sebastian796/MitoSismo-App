@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {getUserMissions, completeMission, } from "../../services/missionsService";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -8,7 +8,7 @@ import { MissionsAccessGuard } from "../../components/auth/MissionsAccessGuard";
 import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { Mission } from "../../types";
-
+import { CameraVerificationModal } from "./evidencia";
 export default function MissionsScreen() {
   return (
     <MissionsAccessGuard>
@@ -21,107 +21,172 @@ function AuthenticatedMissionsScreen() {
   const { user, getAccessToken, refreshAccount } = useAuth();
 
   const [missionsList, setMissionsList] = useState<Mission[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [updatingIds, setUpdatingIds] = useState<Record<number, boolean>>({});
+  const [updatingIds, setUpdatingIds] = useState<Record<string | number, boolean>>({});
 
-  const loadMissions = useCallback(
-    async (isMounted?: () => boolean) => {
-      try {
-        setLoading(true);
-        setError(null);
+  // Estados para controlar el modal de la cámara y la misión seleccionada
+  const [selectedMissionForCamera, setSelectedMissionForCamera] = useState<Mission | null>(null);
+  const [isCameraModalVisible, setIsCameraModalVisible] = useState<boolean>(false);
 
-        const token = await getAccessToken();
-        if (!token) {
-          throw new Error("No se encontró una sesión válida.");
-        }
-
-        const data = await getUserMissions(token);
-        if (!isMounted || isMounted()) {
-          setMissionsList(data);
-        }
-      } catch (err) {
-        console.error("Error cargando misiones:", err);
-        if (!isMounted || isMounted()) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "No se pudieron cargar las misiones.",
-          );
-        }
-      } finally {
-        if (!isMounted || isMounted()) {
-          setLoading(false);
-        }
-      }
-    },
-    [getAccessToken],
-  );
+  const isMountedRef = useRef<boolean>(true);
 
   useEffect(() => {
-    let mounted = true;
-    loadMissions(() => mounted);
+    isMountedRef.current = true;
     return () => {
-      mounted = false;
+      isMountedRef.current = false;
     };
-  }, [loadMissions]);
+  }, []);
 
-  // Nivel y XP reales de la cuenta
-  const mascota = user?.dataMascota ?? null;
-  const nivel = Math.max(1, mascota?.nivel ?? 1);
-  const totalXp = Math.max(0, mascota?.xpActual ?? 0);
-  const nextLevelThreshold = Math.max(1, (nivel + 1) * (nivel + 1) * 10);
-
-  const progressPercent = Math.min(
-    100,
-    Math.max(0, Math.round((totalXp / nextLevelThreshold) * 100)),
-  );
-
-  const handleCompleteMission = async (mission: Mission) => {
-    // Una vez completada o mientras se está procesando, no permite volver a ejecutarse
-    if (mission.completed || updatingIds[mission.id]) return;
-
-    setUpdatingIds((prev) => ({ ...prev, [mission.id]: true }));
-    setError(null);
-
+  const loadMissions = useCallback(async () => {
     try {
+      setLoading(true);
+      setError(null);
+
       const token = await getAccessToken();
       if (!token) {
         throw new Error("No se encontró una sesión válida.");
       }
 
-      await completeMission(mission.id, token);
-
-      setMissionsList((prev) =>
-        prev.map((m) =>
-          m.id === mission.id
-            ? {
-                ...m,
-                completed: true,
-                progress: 100,
-              }
-            : m,
-        ),
-      );
-
-      await refreshAccount();
+      const data = await getUserMissions(token);
+      if (isMountedRef.current) {
+        setMissionsList(data);
+      }
     } catch (err) {
-      console.error("Error completando misión:", err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "No se pudo completar la misión. Inténtalo nuevamente.",
-      );
+      console.error("Error cargando misiones:", err);
+      if (isMountedRef.current) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "No se pudieron cargar las misiones.",
+        );
+      }
     } finally {
-      setUpdatingIds((prev) => {
-        const next = { ...prev };
-        delete next[mission.id];
-        return next;
-      });
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, [getAccessToken]);
 
-  const completedCount = missionsList.filter((m) => m.completed).length;
+  useEffect(() => {
+    loadMissions();
+  }, [loadMissions]);
+
+  // Fórmula unificada derivada directamente de la experiencia acumulada (xpActual):
+  // - Nivel 1 requiere 150 XP; cada nivel suma +60 XP (150, 210, 270, 330...)
+  // - Al alcanzar la experiencia requerida, sube de nivel y el remanente pasa a ser
+  //   la experiencia actual del nuevo nivel (siempre menor a la experiencia requerida).
+  const {
+    nivel,
+    totalXp,
+    xpInCurrentLevel,
+    xpNeededForNextLevel,
+    progressPercent,
+    mascota,
+  } = useMemo(() => {
+    const currentMascota = user?.dataMascota ?? null;
+    const accumulatedXp = Math.max(0, currentMascota?.xpActual ?? 0);
+
+    const BASE_XP = 150;
+    const XP_INCREMENT = 60;
+
+    let calculatedLevel = 1;
+    let remainingXp = accumulatedXp;
+    let requiredForCurrentLevel = BASE_XP;
+
+    // Descuenta cada nivel completado hasta quedar en el nivel activo actual
+    while (remainingXp >= requiredForCurrentLevel) {
+      remainingXp -= requiredForCurrentLevel;
+      calculatedLevel += 1;
+      requiredForCurrentLevel = BASE_XP + (calculatedLevel - 1) * XP_INCREMENT;
+    }
+
+    const percent = Math.min(
+      100,
+      Math.max(0, Math.round((remainingXp / requiredForCurrentLevel) * 100)),
+    );
+
+    return {
+      mascota: currentMascota,
+      nivel: calculatedLevel,
+      totalXp: accumulatedXp,
+      xpInCurrentLevel: remainingXp,
+      xpNeededForNextLevel: requiredForCurrentLevel,
+      progressPercent: percent,
+    };
+  }, [user?.dataMascota]);
+
+  const completedCount = useMemo(
+    () => missionsList.filter((m) => m.completed).length,
+    [missionsList],
+  );
+
+  // Al presionar la misión, se abre el modal de la cámara en lugar de completarla de inmediato
+  const handlePressMission = useCallback((mission: Mission) => {
+    if (mission.completed) return;
+    setSelectedMissionForCamera(mission);
+    setIsCameraModalVisible(true);
+  }, []);
+
+  // Función ejecutada tras tomar la fotografía y confirmar en el modal de evidencia
+  const handleCameraSuccess = useCallback(
+    async (missionId: string | number, photoUri: string) => {
+      if (updatingIds[missionId]) return;
+
+      setUpdatingIds((prev) => ({ ...prev, [missionId]: true }));
+      setError(null);
+
+      try {
+        const token = await getAccessToken();
+        if (!token) {
+          throw new Error("No se encontró una sesión válida.");
+        }
+
+        await completeMission(Number(missionId), token);
+
+        if (!isMountedRef.current) return;
+
+        setMissionsList((prev) =>
+          prev.map((m) =>
+            m.id === missionId
+              ? {
+                  ...m,
+                  completed: true,
+                  progress: 100,
+                }
+              : m,
+          ),
+        );
+
+        try {
+          await refreshAccount();
+        } catch (refreshErr) {
+          console.warn(
+            "Misión completada, pero falló la actualización de XP de cuenta:",
+            refreshErr,
+          );
+        }
+      } catch (err) {
+        console.error("Error completando misión con evidencia:", err);
+        if (isMountedRef.current) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "No se pudo completar la misión. Inténtalo nuevamente.",
+          );
+        }
+      } finally {
+        if (isMountedRef.current) {
+          setUpdatingIds((prev) => {
+            const next = { ...prev };
+            delete next[missionId];
+            return next;
+          });
+        }
+      }
+    },
+    [getAccessToken, refreshAccount, updatingIds],
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -158,7 +223,7 @@ function AuthenticatedMissionsScreen() {
           <View style={styles.progressLabels}>
             <Text style={styles.progressSub}>
               {user
-                ? `${totalXp} / ${nextLevelThreshold} XP para Nivel ${nivel + 1}`
+                ? `${xpInCurrentLevel} / ${xpNeededForNextLevel} XP para Nivel ${nivel + 1}`
                 : "Inicia sesión para guardar tu progreso"}
             </Text>
             <Text style={styles.progressPercent}>{progressPercent}%</Text>
@@ -184,8 +249,10 @@ function AuthenticatedMissionsScreen() {
             <Text style={styles.errorText}>{error}</Text>
             {!loading && missionsList.length === 0 && (
               <Pressable
-                onPress={() => loadMissions()}
+                onPress={loadMissions}
                 style={styles.retryButton}
+                accessibilityRole="button"
+                accessibilityLabel="Reintentar carga de misiones"
               >
                 <Text style={styles.retryText}>Reintentar</Text>
               </Pressable>
@@ -197,12 +264,19 @@ function AuthenticatedMissionsScreen() {
           missionsList.map((m) => {
             const isUpdating = Boolean(updatingIds[m.id]);
             const isDisabled = m.completed || isUpdating;
+            const clampedProgress = Math.min(100, Math.max(0, m.progress));
 
             return (
               <Pressable
                 key={m.id}
-                onPress={() => handleCompleteMission(m)}
+                onPress={() => handlePressMission(m)}
                 disabled={isDisabled}
+                accessibilityRole="button"
+                accessibilityLabel={m.title}
+                accessibilityState={{
+                  disabled: isDisabled,
+                  checked: m.completed,
+                }}
               >
                 <Card
                   style={[
@@ -248,7 +322,7 @@ function AuthenticatedMissionsScreen() {
                         <View
                           style={[
                             styles.itemProgressFill,
-                            { width: `${m.progress}%` },
+                            { width: `${clampedProgress}%` },
                           ]}
                         />
                       </View>
@@ -272,7 +346,7 @@ function AuthenticatedMissionsScreen() {
                           </Text>
                         ) : (
                           <Text style={styles.statusPendingText}>
-                            Toca para completar
+                            Toca para tomar foto y completar
                           </Text>
                         )}
                       </View>
@@ -283,6 +357,17 @@ function AuthenticatedMissionsScreen() {
             );
           })}
       </ScrollView>
+
+      {/* Modal de la cámara para la verificación de evidencias */}
+      <CameraVerificationModal
+        visible={isCameraModalVisible}
+        mission={selectedMissionForCamera}
+        onClose={() => {
+          setIsCameraModalVisible(false);
+          setSelectedMissionForCamera(null);
+        }}
+        onSuccess={handleCameraSuccess}
+      />
     </SafeAreaView>
   );
 }

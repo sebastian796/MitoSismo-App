@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { Card } from "../ui/Card";
 import { CreatureAvatar } from "./CreatureAvatar";
 import { PublicCreatureCard } from "./PublicCreatureCard";
+import { Ionicons } from "@expo/vector-icons";
 
 function creatureMessage(mag?: number) {
   if (mag === undefined)
@@ -15,11 +16,34 @@ function creatureMessage(mag?: number) {
   return "Suelo en calma. ¡Buen momento para completar una misión!";
 }
 
+const BASE_XP = 150;
+const XP_INCREMENT = 60;
+
+function getLevelDataFromXp(accumulatedXp: number) {
+  const totalXp = Math.max(0, accumulatedXp);
+  let nivel = 1;
+  let xpInCurrentLevel = totalXp;
+  let xpNeededForNextLevel = BASE_XP;
+
+  while (xpInCurrentLevel >= xpNeededForNextLevel) {
+    xpInCurrentLevel -= xpNeededForNextLevel;
+    nivel += 1;
+    xpNeededForNextLevel = BASE_XP + (nivel - 1) * XP_INCREMENT;
+  }
+
+  return {
+    nivel,
+    totalXp,
+    xpInCurrentLevel,
+    xpNeededForNextLevel,
+  };
+}
+
 /**
  * Tarjeta de criatura del Inicio. Tres estados:
- *  1) Invitado: criatura pública del servidor, sin nivel ni XP.
- *  2) Usuario con criatura: nombre, nivel y XP reales de su cuenta.
- *  3) Usuario sin criatura asignada: estado vacío (no se inventan datos).
+ * 1) Invitado: criatura pública del servidor, sin nivel ni XP.
+ * 2) Usuario con criatura: nombre, nivel y XP reales sincronizados.
+ * 3) Usuario sin criatura asignada: estado vacío (no se inventan datos).
  */
 export function HomeCreatureCard({
   latestMag,
@@ -53,9 +77,17 @@ export function HomeCreatureCard({
     );
   }
 
-  const { criatura, nivel, xpActual } = mascota;
+  const { criatura, xpActual } = mascota;
+  const { nivel, xpInCurrentLevel, xpNeededForNextLevel } = getLevelDataFromXp(
+    xpActual ?? 0,
+  );
+
   return (
-    <Pressable onPress={() => router.push("/creature")}>
+    <Pressable
+      onPress={() => router.push("/creature")}
+      accessibilityRole="button"
+      accessibilityLabel={`Ver detalles de ${criatura.nombre}, Nivel ${nivel}`}
+    >
       <Card style={styles.card}>
         <View style={styles.content}>
           <View style={styles.textCol}>
@@ -68,7 +100,9 @@ export function HomeCreatureCard({
             <Text style={styles.desc} numberOfLines={3}>
               {creatureMessage(latestMag)}
             </Text>
-            <Text style={styles.xp}>{xpActual} XP</Text>
+            <Text style={styles.xp}>
+              {xpInCurrentLevel} / {xpNeededForNextLevel} XP ({xpActual ?? 0} XP total)
+            </Text>
           </View>
           <CreatureAvatar
             nombre={criatura.nombre}
@@ -84,6 +118,7 @@ export function HomeCreatureCard({
 
 /** Tarjeta de criatura del Perfil (fondo claro). */
 export function ProfileCreatureCard() {
+  const router = useRouter();
   const { user } = useAuth();
   const mascota = user?.dataMascota ?? null;
 
@@ -105,24 +140,39 @@ export function ProfileCreatureCard() {
     );
   }
 
-  const { criatura, nivel, xpActual } = mascota;
+  const { criatura, xpActual } = mascota;
+  const { nivel, xpInCurrentLevel, xpNeededForNextLevel } = getLevelDataFromXp(
+    xpActual ?? 0,
+  );
+
   return (
-    <Card style={styles.profileCard}>
-      <View style={styles.profileRow}>
-        <CreatureAvatar
-          nombre={criatura.nombre}
-          elemento={criatura.elemento}
-          imageUrl={criatura.imageUrl}
-          size={52}
-        />
-        <View style={styles.profileText}>
-          <Text style={styles.profileTitle}>{criatura.nombre}</Text>
-          <Text style={styles.profileDesc}>
-            Nivel {nivel} • {xpActual} XP
-          </Text>
+    <Pressable
+      onPress={() => router.push("/creature")}
+      accessibilityRole="button"
+      accessibilityLabel={`Ver criatura ${criatura.nombre}`}
+    >
+      <Card style={styles.profileCard}>
+        <View style={styles.profileRow}>
+          <CreatureAvatar
+            nombre={criatura.nombre}
+            elemento={criatura.elemento}
+            imageUrl={criatura.imageUrl}
+            size={52}
+          />
+          <View style={styles.profileText}>
+            <Text style={styles.profileTitle}>{criatura.nombre}</Text>
+            <Text style={styles.profileDesc}>
+              Nivel {nivel} • {xpInCurrentLevel} / {xpNeededForNextLevel} XP
+            </Text>
+          </View>
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={Colors.primary}
+          />
         </View>
-      </View>
-    </Card>
+      </Card>
+    </Pressable>
   );
 }
 

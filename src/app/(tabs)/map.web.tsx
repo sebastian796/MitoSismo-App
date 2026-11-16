@@ -26,19 +26,24 @@ export default function MapWebScreen() {
   const mapRef = useRef<LeafletMap | null>(null);
   const layerRef = useRef<LayerGroup | null>(null);
 
-  // Refs aislados para la ubicación del usuario (no se borran al filtrar sismos)
+  // Refs aislados para la ubicación del usuario
   const userMarkerRef = useRef<CircleMarker | null>(null);
   const userAccuracyRef = useRef<Circle | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const hasCenteredUserRef = useRef(false);
 
+  const [mapReady, setMapReady] = useState(false);
   const [quakes, setQuakes] = useState<Quake[]>([]);
   const [minimumMagnitude, setMinimumMagnitude] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   // Estado de coordenadas y permisos del usuario
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+    accuracy: number;
+  } | null>(null);
   const [locationDenied, setLocationDenied] = useState(false);
 
   const loadEarthquakes = useCallback(async () => {
@@ -62,7 +67,7 @@ export default function MapWebScreen() {
     return () => clearInterval(timer);
   }, [loadEarthquakes]);
 
-  // Función reutilizable para solicitar permisos y rastrear ubicación en tiempo real
+  // 1. Rastreo GPS: solo captura coordenadas y actualiza el estado
   const startUserTracking = useCallback(() => {
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
       return;
@@ -73,49 +78,22 @@ export default function MapWebScreen() {
       watchIdRef.current = null;
     }
 
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      async (position) => {
+    // Lectura rápida inicial para no depender solo de watchPosition
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
         const { latitude, longitude, accuracy } = position.coords;
         setLocationDenied(false);
-        setUserLocation({ lat: latitude, lng: longitude });
+        setUserLocation({ lat: latitude, lng: longitude, accuracy });
+      },
+      () => {},
+      { enableHighAccuracy: false, maximumAge: 30000, timeout: 5000 }
+    );
 
-        const map = mapRef.current;
-        if (!map) return;
-
-        const leaflet = await import('leaflet');
-        if (!mapRef.current) return;
-
-        if (!userMarkerRef.current) {
-          userAccuracyRef.current = leaflet
-            .circle([latitude, longitude], {
-              radius: accuracy,
-              color: '#2563EB',
-              fillColor: '#3B82F6',
-              fillOpacity: 0.15,
-              weight: 1,
-            })
-            .addTo(map);
-
-          userMarkerRef.current = leaflet
-            .circleMarker([latitude, longitude], {
-              radius: 8,
-              color: '#FFFFFF',
-              fillColor: '#2563EB',
-              fillOpacity: 1,
-              weight: 2.5,
-            })
-            .bindPopup('<strong>Tu ubicación actual</strong>')
-            .addTo(map);
-        } else {
-          userMarkerRef.current.setLatLng([latitude, longitude]);
-          userAccuracyRef.current?.setLatLng([latitude, longitude]).setRadius(accuracy);
-        }
-
-        // Centrar automáticamente solo la primera vez
-        if (!hasCenteredUserRef.current) {
-          hasCenteredUserRef.current = true;
-          map.setView([latitude, longitude], 10);
-        }
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        setLocationDenied(false);
+        setUserLocation({ lat: latitude, lng: longitude, accuracy });
       },
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {
@@ -126,25 +104,12 @@ export default function MapWebScreen() {
       {
         enableHighAccuracy: true,
         maximumAge: 5000,
-        timeout: 10000,
+        timeout: 15000,
       }
     );
   }, []);
 
-  // Botón para regresar a la ubicación en tiempo real o solicitar permisos si no se han dado
-  const handleCenterOnUser = useCallback(() => {
-    if (userLocation && mapRef.current) {
-      mapRef.current.flyTo([userLocation.lat, userLocation.lng], 12, { duration: 0.8 });
-      userMarkerRef.current?.openPopup();
-      return;
-    }
-
-    // Si aún no hay ubicación o faltan permisos, fuerza la solicitud al navegador
-    hasCenteredUserRef.current = false;
-    startUserTracking();
-  }, [userLocation, startUserTracking]);
-
-  // Inicialización del mapa Leaflet
+  // 2. Inicialización del mapa Leaflet
   useEffect(() => {
     let cancelled = false;
 
@@ -169,8 +134,8 @@ export default function MapWebScreen() {
 
       mapRef.current = map;
       layerRef.current = leaflet.layerGroup().addTo(map);
+      setMapReady(true);
 
-      // Iniciar solicitud de permisos y rastreo GPS una vez listo el mapa
       startUserTracking();
     }
 
@@ -187,17 +152,87 @@ export default function MapWebScreen() {
       mapRef.current?.remove();
       mapRef.current = null;
       layerRef.current = null;
+      setMapReady(false);
     };
   }, [startUserTracking]);
+
+  // 3. Efecto dedicado a dibujar/actualizar el punto azul cuando mapReady y userLocation existan
+  useEffect(() => {
+    if (!mapReady || !userLocation || !mapRef.current) return;
+
+    let cancelled = false;
+
+    async function renderUserPoint() {
+      const leaflet = await import('leaflet');
+      const map = mapRef.current;
+      if (cancelled || !map || !userLocation) return;
+
+      const { lat, lng, accuracy } = userLocation;
+
+      if (!userMarkerRef.current) {
+        userAccuracyRef.current = leaflet
+          .circle([lat, lng], {
+            radius: accuracy,
+            color: '#2563EB',
+            fillColor: '#3B82F6',
+            fillOpacity: 0.15,
+            weight: 1,
+          })
+          .addTo(map);
+
+        userMarkerRef.current = leaflet
+          .circleMarker([lat, lng], {
+            radius: 8,
+            color: '#FFFFFF',
+            fillColor: '#2563EB',
+            fillOpacity: 1,
+            weight: 2.5,
+          })
+          .bindPopup('<strong>Tu ubicación actual</strong>')
+          .addTo(map);
+      } else {
+        userMarkerRef.current.setLatLng([lat, lng]);
+        userAccuracyRef.current?.setLatLng([lat, lng]).setRadius(accuracy);
+      }
+
+      // Asegura que el punto del usuario quede por encima de los marcadores de sismos
+      userMarkerRef.current.bringToFront();
+
+      if (!hasCenteredUserRef.current) {
+        hasCenteredUserRef.current = true;
+        map.setView([lat, lng], 10);
+      }
+    }
+
+    renderUserPoint();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mapReady, userLocation]);
+
+  // Botón para regresar a la ubicación en tiempo real o solicitar permisos
+  const handleCenterOnUser = useCallback(() => {
+    if (userLocation && mapRef.current) {
+      mapRef.current.flyTo([userLocation.lat, userLocation.lng], 12, { duration: 0.8 });
+      userMarkerRef.current?.openPopup();
+      return;
+    }
+
+    hasCenteredUserRef.current = false;
+    startUserTracking();
+  }, [userLocation, startUserTracking]);
 
   const visibleQuakes = useMemo(
     () => quakes.filter((quake) => quake.mag >= minimumMagnitude),
     [quakes, minimumMagnitude]
   );
 
-  // Renderizado de marcadores de sismos (usa layerRef independiente)
+  // Renderizado de marcadores de sismos
   useEffect(() => {
+    if (!mapReady) return;
     let cancelled = false;
+
     async function updateMarkers() {
       const leaflet = await import('leaflet');
       if (cancelled || !mapRef.current || !layerRef.current) return;
@@ -217,12 +252,16 @@ export default function MapWebScreen() {
           )
           .addTo(layerRef.current!);
       });
+
+      // Mantener el punto del usuario siempre visible arriba
+      userMarkerRef.current?.bringToFront();
     }
+
     updateMarkers();
     return () => {
       cancelled = true;
     };
-  }, [visibleQuakes]);
+  }, [mapReady, visibleQuakes]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -264,9 +303,12 @@ export default function MapWebScreen() {
       ) : null}
 
       <View style={styles.mapWrapper}>
-        <View ref={mapElementRef} style={styles.map} />
+        {/* Uso de div nativo para evitar el error de tipo y garantizar el nodo DOM real para Leaflet */}
+        <div
+          ref={mapElementRef}
+          style={{ width: '100%', height: '100%', zIndex: 0 }}
+        />
 
-        {/* Botón flotante para volver a la ubicación en tiempo real o pedir permiso */}
         <Pressable
           onPress={handleCenterOnUser}
           style={styles.locateButton}
