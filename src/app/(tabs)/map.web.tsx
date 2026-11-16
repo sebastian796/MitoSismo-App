@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
-import type { Map as LeafletMap, LayerGroup } from 'leaflet';
+import type { Map as LeafletMap, LayerGroup, CircleMarker, Circle } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Colors } from '../../constants/theme';
 import { fetchRecentEarthquakes } from '../../services/earthquakeService';
@@ -13,20 +13,34 @@ const FILTERS = [
   { label: 'M≥5', value: 5 },
   { label: 'M≥6', value: 6 },
 ];
+
 function magnitudeColor(magnitude: number) {
   if (magnitude >= 6) return '#8B1E1E';
   if (magnitude >= 5) return Colors.magFuerte.dot;
   if (magnitude >= 4) return Colors.gold;
   return Colors.magLeve.dot;
 }
+
 export default function MapWebScreen() {
   const mapElementRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const layerRef = useRef<LayerGroup | null>(null);
+
+  // Refs aislados para la ubicación del usuario (no se borran al filtrar sismos)
+  const userMarkerRef = useRef<CircleMarker | null>(null);
+  const userAccuracyRef = useRef<Circle | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const hasCenteredUserRef = useRef(false);
+
   const [quakes, setQuakes] = useState<Quake[]>([]);
   const [minimumMagnitude, setMinimumMagnitude] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Estado de coordenadas y permisos del usuario
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationDenied, setLocationDenied] = useState(false);
+
   const loadEarthquakes = useCallback(async () => {
     try {
       setLoading(true);
@@ -39,37 +53,149 @@ export default function MapWebScreen() {
       setLoading(false);
     }
   }, []);
+
   useEffect(() => {
     loadEarthquakes();
-    const timer = setInterval(() => { void loadEarthquakes(); }, 60_000);
+    const timer = setInterval(() => {
+      void loadEarthquakes();
+    }, 60_000);
     return () => clearInterval(timer);
   }, [loadEarthquakes]);
+
+  // Función reutilizable para solicitar permisos y rastrear ubicación en tiempo real
+  const startUserTracking = useCallback(() => {
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      return;
+    }
+
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      async (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        setLocationDenied(false);
+        setUserLocation({ lat: latitude, lng: longitude });
+
+        const map = mapRef.current;
+        if (!map) return;
+
+        const leaflet = await import('leaflet');
+        if (!mapRef.current) return;
+
+        if (!userMarkerRef.current) {
+          userAccuracyRef.current = leaflet
+            .circle([latitude, longitude], {
+              radius: accuracy,
+              color: '#2563EB',
+              fillColor: '#3B82F6',
+              fillOpacity: 0.15,
+              weight: 1,
+            })
+            .addTo(map);
+
+          userMarkerRef.current = leaflet
+            .circleMarker([latitude, longitude], {
+              radius: 8,
+              color: '#FFFFFF',
+              fillColor: '#2563EB',
+              fillOpacity: 1,
+              weight: 2.5,
+            })
+            .bindPopup('<strong>Tu ubicación actual</strong>')
+            .addTo(map);
+        } else {
+          userMarkerRef.current.setLatLng([latitude, longitude]);
+          userAccuracyRef.current?.setLatLng([latitude, longitude]).setRadius(accuracy);
+        }
+
+        // Centrar automáticamente solo la primera vez
+        if (!hasCenteredUserRef.current) {
+          hasCenteredUserRef.current = true;
+          map.setView([latitude, longitude], 10);
+        }
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationDenied(true);
+        }
+        console.warn('Error de geolocalización:', err.message);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 10000,
+      }
+    );
+  }, []);
+
+  // Botón para regresar a la ubicación en tiempo real o solicitar permisos si no se han dado
+  const handleCenterOnUser = useCallback(() => {
+    if (userLocation && mapRef.current) {
+      mapRef.current.flyTo([userLocation.lat, userLocation.lng], 12, { duration: 0.8 });
+      userMarkerRef.current?.openPopup();
+      return;
+    }
+
+    // Si aún no hay ubicación o faltan permisos, fuerza la solicitud al navegador
+    hasCenteredUserRef.current = false;
+    startUserTracking();
+  }, [userLocation, startUserTracking]);
+
+  // Inicialización del mapa Leaflet
   useEffect(() => {
     let cancelled = false;
+
     async function createMap() {
       if (!mapElementRef.current || mapRef.current) return;
       const leaflet = await import('leaflet');
       if (cancelled || !mapElementRef.current) return;
-      const map = leaflet.map(mapElementRef.current, { center: [-9.19, -75.02], zoom: 5, minZoom: 4, maxZoom: 12 });
-      leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19,
-      }).addTo(map);
+
+      const map = leaflet.map(mapElementRef.current, {
+        center: [-9.19, -75.02],
+        zoom: 5,
+        minZoom: 4,
+        maxZoom: 18,
+      });
+
+      leaflet
+        .tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors',
+          maxZoom: 19,
+        })
+        .addTo(map);
+
       mapRef.current = map;
       layerRef.current = leaflet.layerGroup().addTo(map);
+
+      // Iniciar solicitud de permisos y rastreo GPS una vez listo el mapa
+      startUserTracking();
     }
+
     createMap();
+
     return () => {
       cancelled = true;
+      if (watchIdRef.current !== null && typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      userMarkerRef.current = null;
+      userAccuracyRef.current = null;
       mapRef.current?.remove();
       mapRef.current = null;
       layerRef.current = null;
     };
-  }, []);
+  }, [startUserTracking]);
+
   const visibleQuakes = useMemo(
     () => quakes.filter((quake) => quake.mag >= minimumMagnitude),
-    [quakes, minimumMagnitude],
+    [quakes, minimumMagnitude]
   );
+
+  // Renderizado de marcadores de sismos (usa layerRef independiente)
   useEffect(() => {
     let cancelled = false;
     async function updateMarkers() {
@@ -78,42 +204,85 @@ export default function MapWebScreen() {
       layerRef.current.clearLayers();
       visibleQuakes.forEach((quake) => {
         const color = magnitudeColor(quake.mag);
-        leaflet.circleMarker([quake.lat, quake.lng], {
-          radius: Math.max(6, Math.min(16, 5 + quake.mag * 1.5)),
-          color,
-          fillColor: color,
-          fillOpacity: 0.72,
-          weight: 2,
-        }).bindPopup(
-          `<strong>M ${quake.mag.toFixed(1)}</strong><br/>${quake.place}<br/>Profundidad: ${quake.depth.toFixed(1)} km<br/>${quake.fullDate}`,
-        ).addTo(layerRef.current!);
+        leaflet
+          .circleMarker([quake.lat, quake.lng], {
+            radius: Math.max(6, Math.min(16, 5 + quake.mag * 1.5)),
+            color,
+            fillColor: color,
+            fillOpacity: 0.72,
+            weight: 2,
+          })
+          .bindPopup(
+            `<strong>M ${quake.mag.toFixed(1)}</strong><br/>${quake.place}<br/>Profundidad: ${quake.depth.toFixed(1)} km<br/>${quake.fullDate}`
+          )
+          .addTo(layerRef.current!);
       });
     }
     updateMarkers();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [visibleQuakes]);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}><Text style={styles.backText}>‹</Text></Pressable>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <Text style={styles.backText}>‹</Text>
+        </Pressable>
         <View style={styles.headerText}>
           <Text style={styles.title}>Mapa de sismos</Text>
           <Text style={styles.subtitle}>Últimos 10 sismos de América Latina</Text>
         </View>
-        <Pressable onPress={loadEarthquakes} style={styles.refreshButton} disabled={loading}><Text style={styles.refreshText}>↻</Text></Pressable>
+        <Pressable onPress={loadEarthquakes} style={styles.refreshButton} disabled={loading}>
+          <Text style={styles.refreshText}>↻</Text>
+        </Pressable>
       </View>
+
       <View style={styles.filters}>
         {FILTERS.map((filter) => (
-          <Pressable key={filter.value} onPress={() => setMinimumMagnitude(filter.value)} style={[styles.filter, minimumMagnitude === filter.value && styles.filterActive]}>
-            <Text style={[styles.filterText, minimumMagnitude === filter.value && styles.filterTextActive]}>{filter.label}</Text>
+          <Pressable
+            key={filter.value}
+            onPress={() => setMinimumMagnitude(filter.value)}
+            style={[styles.filter, minimumMagnitude === filter.value && styles.filterActive]}
+          >
+            <Text style={[styles.filterText, minimumMagnitude === filter.value && styles.filterTextActive]}>
+              {filter.label}
+            </Text>
           </Pressable>
         ))}
         <Text style={styles.resultCount}>{visibleQuakes.length} sismos</Text>
       </View>
-      {error ? <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text><Pressable onPress={loadEarthquakes} style={styles.retryButton}><Text style={styles.retryText}>Reintentar</Text></Pressable></View> : null}
-      <View ref={mapElementRef} style={styles.map} />
+
+      {error ? (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable onPress={loadEarthquakes} style={styles.retryButton}>
+            <Text style={styles.retryText}>Reintentar</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      <View style={styles.mapWrapper}>
+        <View ref={mapElementRef} style={styles.map} />
+
+        {/* Botón flotante para volver a la ubicación en tiempo real o pedir permiso */}
+        <Pressable
+          onPress={handleCenterOnUser}
+          style={styles.locateButton}
+          accessibilityLabel="Centrar en mi ubicación"
+        >
+          <Text style={styles.locateIcon}>{userLocation ? '⌖' : '📍'}</Text>
+          <Text style={styles.locateText}>
+            {userLocation ? 'Mi ubicación' : locationDenied ? 'Activar GPS' : 'Ubicarme'}
+          </Text>
+        </Pressable>
+      </View>
+
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Fuente de sismos: USGS · Mapa: OpenStreetMap</Text>
+        <Text style={styles.footerText}>
+          Fuente de sismos: USGS · {userLocation ? 'GPS activo' : 'Mapa: OpenStreetMap'}
+        </Text>
         {loading ? <ActivityIndicator size="small" color={colors.gold} /> : null}
       </View>
     </SafeAreaView>
@@ -135,11 +304,15 @@ const styles = StyleSheet.create({
   filterText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
   filterTextActive: { color: colors.white },
   resultCount: { marginLeft: 'auto', fontSize: 12, color: colors.textSecondary },
+  mapWrapper: { flex: 1, minHeight: 400, position: 'relative' },
   map: { flex: 1, minHeight: 400 },
   errorBox: { position: 'absolute', zIndex: 1000, top: 125, left: 20, right: 20, padding: 14, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4 },
   errorText: { color: colors.magFuerte.text, textAlign: 'center', lineHeight: 20 },
   retryButton: { alignSelf: 'center', marginTop: 10, backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 9 },
   retryText: { color: colors.white, fontWeight: '700' },
+  locateButton: { position: 'absolute', zIndex: 1000, right: 16, bottom: 18, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4 },
+  locateIcon: { fontSize: 15, fontWeight: '700', color: colors.primary },
+  locateText: { fontSize: 12, fontWeight: '700', color: colors.textPrimary },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   footerText: { fontSize: 10, color: colors.textSecondary },
 });
