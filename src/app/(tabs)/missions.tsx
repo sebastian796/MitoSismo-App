@@ -1,10 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {getUserMissions, completeMission, uncompleteMission, } from "../../services/missionsService";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, TopBar } from "../../components";
 import { MissionsAccessGuard } from "../../components/auth/MissionsAccessGuard";
-import { missions as initialMissions } from "../../constants/data";
 import { Colors, Radii, Spacing, Typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { Mission } from "../../types";
@@ -17,28 +17,89 @@ export default function MissionsScreen() {
 }
 
 function AuthenticatedMissionsScreen() {
-  const { user, requireAuth } = useAuth();
-  const [missionsList, setMissionsList] = useState<Mission[]>(initialMissions);
-  // Nivel y XP reales de la cuenta (fórmula del backend: nivel = raíz de XP/10).
+  const { user, requireAuth, getAccessToken, refreshAccount } = useAuth();
+
+  const [missionsList, setMissionsList] = useState<Mission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadMissions = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const token = await getAccessToken();
+
+        if (!token) {
+          throw new Error("No se encontró una sesión válida.");
+        }
+
+        const data = await getUserMissions(token);
+        setMissionsList(data);
+
+      } catch (err) {
+        console.error("Error cargando misiones:", err);
+        setError("No se pudieron cargar las misiones.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMissions();
+  }, []);
+
+  // Nivel y XP reales de la cuenta
   const mascota = user?.dataMascota ?? null;
   const nivel = mascota?.nivel ?? 1;
   const totalXp = mascota?.xpActual ?? 0;
   const nextLevelThreshold = (nivel + 1) * (nivel + 1) * 10;
+
   const progressPercent = Math.min(
     100,
     Math.round((totalXp / nextLevelThreshold) * 100),
   );
-  const toggleMission = (id: number) => {
-    // Protección de la ACCIÓN: un invitado no puede completar misiones ni ganar XP.
+
+  const toggleMission = async (id: number) => {
     if (!requireAuth("completar misiones y ganar XP")) return;
-    setMissionsList((prev) =>
-      prev.map((m) =>
-        m.id === id
-          ? { ...m, completed: !m.completed, progress: m.completed ? 0 : 100 }
-          : m,
-      ),
-    );
+
+    const mission = missionsList.find((m) => m.id === id);
+
+    if (!mission) return;
+
+    try {
+      const token = await getAccessToken();
+
+      if (!token) {
+        throw new Error("No se encontró una sesión válida.");
+      }
+
+      if (mission.completed) {
+        await uncompleteMission(id, token);
+      } else {
+        await completeMission(id, token);
+      }
+
+      setMissionsList((prev) =>
+        prev.map((m) =>
+          m.id === id
+            ? {
+                ...m,
+                completed: !mission.completed,
+                progress: mission.completed ? 0 : 100,
+              }
+            : m,
+        ),
+      );
+
+      await refreshAccount();
+
+    } catch (err) {
+      console.error("Error actualizando misión:", err);
+      setError("No se pudo actualizar la misión. Inténtalo nuevamente.");
+    }
   };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <TopBar title="Misiones de Prevención" />
@@ -90,10 +151,15 @@ function AuthenticatedMissionsScreen() {
           </Text>
         </View>
         {}
-        {user && (
-          <Text style={[styles.progressSub, { marginBottom: Spacing.md }]}>
-            Las misiones aún no se sincronizan con tu cuenta; falta conectarlas
-            con el servidor.
+        {loading && (
+          <Text style={{ color: Colors.text }}>
+            Cargando misiones...
+          </Text>
+        )}
+
+        {error && (
+          <Text style={{ color: "red" }}>
+            {error}
           </Text>
         )}
         {missionsList.map((m) => (
