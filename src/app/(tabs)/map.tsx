@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,31 +8,54 @@ import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
 import { fetchRecentEarthquakes } from '../../services/earthquakeService';
 import type { Quake } from '../../types/earthquake';
 import { useCallback, useEffect } from 'react';
+import * as Location from 'expo-location';
+import { Alert, Linking } from 'react-native'; // <-- Asegúrate de incluir Alert y Linking en tu import de 'react-native'
+// ... mantén tus demás imports (React, useState, useEffect, useMemo, useCallback, useRef, SafeAreaView, View, Text, Pressable, ActivityIndicator, StyleSheet, MapView, Marker, Callout, useRouter, Colors, fetchRecentEarthquakes, Quake)
+
+type GeoSubscription = Awaited<ReturnType<typeof Location.watchPositionAsync>>;
+
 const INITIAL_REGION = {
   latitude: -9.19,
   longitude: -75.02,
   latitudeDelta: 14,
   longitudeDelta: 12,
 };
+
+const STREET_ZOOM_DELTA = {
+  latitudeDelta: 0.015,
+  longitudeDelta: 0.015,
+};
+
 const FILTERS = [
   { label: 'Todos', value: 0 },
   { label: 'M≥4', value: 4 },
   { label: 'M≥5', value: 5 },
   { label: 'M≥6', value: 6 },
 ];
+
 function magnitudeColor(magnitude: number) {
   if (magnitude >= 6) return '#8B1E1E';
   if (magnitude >= 5) return Colors.magFuerte.dot;
   if (magnitude >= 4) return Colors.gold;
   return Colors.magLeve.dot;
 }
+
 export default function MapScreen() {
   const router = useRouter();
+  const mapRef = useRef<MapView | null>(null);
+  const subscriptionRef = useRef<GeoSubscription | null>(null);
+  const hasCenteredUserRef = useRef(false);
+
   const [quakes, setQuakes] = useState<Quake[]>([]);
   const [minimumMagnitude, setMinimumMagnitude] = useState(0);
-  const [selected, setSelected] = useState<Quake | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Estado de permisos y ubicación en tiempo real
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
+  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
   const loadEarthquakes = useCallback(async () => {
     try {
       setLoading(true);
@@ -45,15 +68,129 @@ export default function MapScreen() {
       setLoading(false);
     }
   }, []);
+
   useEffect(() => {
     loadEarthquakes();
-    const timer = setInterval(() => { void loadEarthquakes(); }, 60_000);
+    const timer = setInterval(() => {
+      void loadEarthquakes();
+    }, 60_000);
     return () => clearInterval(timer);
   }, [loadEarthquakes]);
+
+  // Verifica si hay permiso; si no lo hay, lo solicita y activa el rastreo en tiempo real
+  const ensurePermissionAndTrack = useCallback(async (fromButtonPress = false) => {
+    try {
+      const current = await Location.getForegroundPermissionsAsync();
+      let finalStatus = current.status;
+
+      if (finalStatus !== 'granted') {
+        if (current.canAskAgain) {
+          const requested = await Location.requestForegroundPermissionsAsync();
+          finalStatus = requested.status;
+        } else if (fromButtonPress) {
+          Alert.alert(
+            'Permiso de ubicación requerido',
+            'Para mostrar tu ubicación en tiempo real respecto a los sismos, habilita el acceso a la ubicación en los ajustes de la aplicación.',
+            [
+              { text: 'Cancelar', style: 'cancel' },
+              { text: 'Abrir Ajustes', onPress: () => void Linking.openSettings() },
+            ]
+          );
+          return;
+        }
+      }
+
+      if (finalStatus !== 'granted') {
+        setLocationDenied(true);
+        setHasLocationPermission(false);
+        return;
+      }
+
+      setLocationDenied(false);
+      setHasLocationPermission(true);
+
+      // Obtener posición inicial inmediata para no esperar al primer intervalo del watch
+      const lastKnown = await Location.getLastKnownPositionAsync();
+      if (lastKnown && !hasCenteredUserRef.current && mapRef.current) {
+        const initialCoords = {
+          latitude: lastKnown.coords.latitude,
+          longitude: lastKnown.coords.longitude,
+        };
+        setUserCoords(initialCoords);
+        hasCenteredUserRef.current = true;
+        mapRef.current.animateToRegion(
+          {
+            ...initialCoords,
+            ...STREET_ZOOM_DELTA,
+          },
+          800
+        );
+      }
+
+      // Iniciar escucha continua en tiempo real
+      subscriptionRef.current?.remove();
+      subscriptionRef.current = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 5000,
+          distanceInterval: 10,
+        },
+        (position) => {
+          const coords = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          setUserCoords(coords);
+
+          if (!hasCenteredUserRef.current && mapRef.current) {
+            hasCenteredUserRef.current = true;
+            mapRef.current.animateToRegion(
+              {
+                ...coords,
+                ...STREET_ZOOM_DELTA,
+              },
+              800
+            );
+          }
+        }
+      );
+    } catch (err) {
+      console.warn('No se pudo obtener la ubicación del dispositivo:', err);
+    }
+  }, []);
+
+  // Solicitud automática al abrir el mapa
+  useEffect(() => {
+    void ensurePermissionAndTrack(false);
+
+    return () => {
+      subscriptionRef.current?.remove();
+      subscriptionRef.current = null;
+    };
+  }, [ensurePermissionAndTrack]);
+
+  // Botón flotante: centra en la ubicación actual a nivel de calles o solicita permisos si faltan
+  const handleCenterOnUser = useCallback(() => {
+    if (hasLocationPermission && userCoords && mapRef.current) {
+      mapRef.current.animateToRegion(
+        {
+          ...userCoords,
+          ...STREET_ZOOM_DELTA,
+        },
+        800
+      );
+      return;
+    }
+
+    hasCenteredUserRef.current = false;
+    void ensurePermissionAndTrack(true);
+  }, [hasLocationPermission, userCoords, ensurePermissionAndTrack]);
+
   const visibleQuakes = useMemo(
     () => quakes.filter((quake) => quake.mag >= minimumMagnitude),
-    [quakes, minimumMagnitude],
+    [quakes, minimumMagnitude]
   );
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -68,6 +205,7 @@ export default function MapScreen() {
           <Text style={styles.refreshText}>↻</Text>
         </Pressable>
       </View>
+
       <View style={styles.filters}>
         {FILTERS.map((filter) => (
           <Pressable
@@ -82,126 +220,300 @@ export default function MapScreen() {
         ))}
         <Text style={styles.resultCount}>{visibleQuakes.length} sismos</Text>
       </View>
-      <View style={styles.mapContainer}>
-        <MapView style={styles.map} initialRegion={INITIAL_REGION}>
-          {visibleQuakes.map((quake) => (
-            <Marker
-              key={quake.id}
-              coordinate={{ latitude: quake.lat, longitude: quake.lng }}
-              onPress={() => setSelected(quake)}
-            >
-              <View style={[styles.marker, { backgroundColor: magnitudeColor(quake.mag) }]}>
-                <Text style={styles.markerText}>{quake.mag.toFixed(1)}</Text>
-              </View>
-              <Callout onPress={() => router.push(`/quake/${quake.id}`)}>
-                <View style={styles.callout}>
-                  <Text style={styles.calloutMagnitude}>M {quake.mag.toFixed(1)}</Text>
-                  <Text style={styles.calloutPlace}>{quake.place}</Text>
-                  <Text style={styles.calloutDetail}>Profundidad: {quake.depth.toFixed(1)} km</Text>
-                  <Text style={styles.calloutDetail}>{quake.fullDate}</Text>
-                </View>
-              </Callout>
-            </Marker>
-          ))}
-        </MapView>
-      </View>
-      {loading ? (
-        <View style={styles.statusBox}>
-          <ActivityIndicator color={Colors.gold} />
-          <Text style={styles.statusText}>Cargando sismos...</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.statusBox}>
+
+      {error ? (
+        <View style={styles.errorBox}>
           <Text style={styles.errorText}>{error}</Text>
           <Pressable onPress={loadEarthquakes} style={styles.retryButton}>
             <Text style={styles.retryText}>Reintentar</Text>
           </Pressable>
         </View>
-      ) : (
-        <View style={styles.bottomPanel}>
-          <View style={styles.resultHeader}>
-            <Text style={styles.resultTitle}>{visibleQuakes.length} sismos encontrados</Text>
-            <Text style={styles.resultSource}>Fuente: USGS</Text>
-          </View>
-          <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-            {visibleQuakes.slice(0, 20).map((quake) => (
-              <Pressable key={quake.id} onPress={() => setSelected(quake)} style={styles.listItem}>
-                <View style={[styles.listMagnitude, { borderColor: magnitudeColor(quake.mag) }]}>
-                  <Text style={[styles.listMagnitudeText, { color: magnitudeColor(quake.mag) }]}>
-                    {quake.mag.toFixed(1)}
-                  </Text>
+      ) : null}
+
+      <View style={styles.mapWrapper}>
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          initialRegion={INITIAL_REGION}
+          showsUserLocation={false}
+          showsMyLocationButton={false}
+        >
+          {hasLocationPermission && userCoords ? (
+            <Marker
+              coordinate={userCoords}
+              anchor={{ x: 0.5, y: 0.5 }}
+              title="Tu ubicación"
+              zIndex={999}
+            >
+              <View style={styles.userLocationOuter}>
+                <View style={styles.userLocationInner} />
+              </View>
+            </Marker>
+          ) : null}
+
+          {visibleQuakes.map((quake) => {
+            const color = magnitudeColor(quake.mag);
+            const size = Math.max(16, Math.min(34, 12 + quake.mag * 3));
+
+            return (
+              <Marker
+                key={quake.id}
+                coordinate={{ latitude: quake.lat, longitude: quake.lng }}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View
+                  style={[
+                    styles.marker,
+                    {
+                      backgroundColor: color,
+                      width: size,
+                      height: size,
+                      borderRadius: size / 2,
+                      borderWidth: 2,
+                      borderColor: '#FFFFFF',
+                      opacity: 0.85,
+                    },
+                  ]}
+                >
+                  <Text style={styles.markerText}>{quake.mag.toFixed(1)}</Text>
                 </View>
-                <View style={styles.listInfo}>
-                  <Text style={styles.listPlace} numberOfLines={2}>{quake.place}</Text>
-                  <Text style={styles.listDetail}>Prof. {quake.depth.toFixed(1)} km · {quake.fullDate}</Text>
-                </View>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-      {selected && (
-        <Pressable style={styles.selectedCard} onPress={() => router.push(`/quake/${selected.id}`)}>
-          <View style={styles.selectedHeader}>
-            <Text style={styles.selectedTitle}>Sismo seleccionado</Text>
-            <Pressable onPress={() => setSelected(null)} hitSlop={8}>
-              <Text style={styles.closeText}>×</Text>
-            </Pressable>
-          </View>
-          <Text style={styles.selectedPlace}>{selected.place}</Text>
-          <Text style={styles.selectedDetail}>
-            Magnitud {selected.mag.toFixed(1)} · Profundidad {selected.depth.toFixed(1)} km
+
+                <Callout onPress={() => router.push(`/quake/${quake.id}`)}>
+                  <View style={styles.callout}>
+                    <Text style={styles.calloutMagnitude}>M {quake.mag.toFixed(1)}</Text>
+                    <Text style={styles.calloutPlace}>{quake.place}</Text>
+                    <Text style={styles.calloutDetail}>Profundidad: {quake.depth.toFixed(1)} km</Text>
+                    <Text style={styles.calloutDetail}>{quake.fullDate}</Text>
+                  </View>
+                </Callout>
+              </Marker>
+            );
+          })}
+        </MapView>
+
+        <Pressable
+          onPress={handleCenterOnUser}
+          style={styles.locateButton}
+          accessibilityLabel="Centrar en mi ubicación"
+        >
+          <Text style={styles.locateIcon}>{hasLocationPermission && userCoords ? '⌖' : '📍'}</Text>
+          <Text style={styles.locateText}>
+            {hasLocationPermission && userCoords ? 'Mi ubicación' : locationDenied ? 'Activar GPS' : 'Ubicarme'}
           </Text>
         </Pressable>
-      )}
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>
+          Fuente de sismos: USGS · {hasLocationPermission && userCoords ? 'GPS activo' : 'Mapa: Nativo'}
+        </Text>
+        {loading ? <ActivityIndicator size="small" color={Colors.gold} /> : null}
+      </View>
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.surface },
-  backButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
-  backText: { fontSize: 34, lineHeight: 34, color: Colors.textPrimary },
-  headerText: { flex: 1 },
-  title: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
-  subtitle: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  refreshButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
-  refreshText: { fontSize: 27, color: Colors.primary },
-  filters: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: Colors.surface },
-  filter: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface },
-  filterActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  filterText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
-  filterTextActive: { color: Colors.white },
-  resultCount: { marginLeft: 'auto', fontSize: 12, color: Colors.textSecondary },
-  mapContainer: { height: 320, marginHorizontal: 12, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: Colors.border },
-  map: { flex: 1 },
-  marker: { minWidth: 38, height: 38, paddingHorizontal: 6, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Colors.white },
-  markerText: { color: Colors.white, fontWeight: '800', fontSize: 11 },
-  callout: { maxWidth: 260, padding: 8 },
-  calloutMagnitude: { fontWeight: '800', fontSize: 15, color: Colors.textPrimary },
-  calloutPlace: { marginTop: 3, fontSize: 12, color: Colors.textPrimary },
-  calloutDetail: { marginTop: 3, fontSize: 11, color: Colors.textSecondary },
-  statusBox: { padding: 14, alignItems: 'center', gap: 8 },
-  statusText: { fontSize: 12, color: Colors.textSecondary },
-  errorText: { color: Colors.magFuerte.text, textAlign: 'center', lineHeight: 20 },
-  retryButton: { marginTop: 10, backgroundColor: Colors.primary, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 9 },
-  retryText: { color: Colors.white, fontWeight: '700' },
-  bottomPanel: { flex: 1, minHeight: 180 },
-  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10 },
-  resultTitle: { ...Typography.bodyLarge, fontWeight: '700' },
-  resultSource: { ...Typography.bodySmall },
-  list: { flex: 1 },
-  listContent: { paddingHorizontal: 12, paddingBottom: 24 },
-  listItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  listMagnitude: { width: 48, height: 42, borderWidth: 2, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  listMagnitudeText: { fontWeight: '800' },
-  listInfo: { flex: 1 },
-  listPlace: { ...Typography.bodyMedium, fontWeight: '700', color: Colors.textPrimary },
-  listDetail: { ...Typography.bodySmall, marginTop: 2 },
-  selectedCard: { position: 'absolute', left: 14, right: 14, bottom: 18, padding: 14, borderRadius: Radii.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 8, elevation: 5 },
-  selectedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  selectedTitle: { fontWeight: '800', color: Colors.textPrimary },
-  closeText: { fontSize: 24, color: Colors.textSecondary },
-  selectedPlace: { marginTop: 5, fontWeight: '700', color: Colors.textPrimary },
-  selectedDetail: { marginTop: 4, fontSize: 12, color: Colors.textSecondary },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background ?? '#0F172A',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    lineHeight: 26,
+    fontWeight: '600',
+  },
+  headerText: {
+    flex: 1,
+  },
+  title: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  subtitle: {
+    color: '#94A3B8',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  refreshButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  refreshText: {
+    color: Colors.gold,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  filters: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    gap: 8,
+  },
+  filter: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  filterActive: {
+    backgroundColor: Colors.gold,
+  },
+  filterText: {
+    color: '#CBD5E1',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  filterTextActive: {
+    color: '#0F172A',
+  },
+  resultCount: {
+    marginLeft: 'auto',
+    color: '#94A3B8',
+    fontSize: 12,
+  },
+  errorBox: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(220, 38, 38, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(220, 38, 38, 0.4)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  errorText: {
+    color: '#FCA5A5',
+    fontSize: 12,
+    flex: 1,
+  },
+  retryButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#DC2626',
+  },
+  retryText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  mapWrapper: {
+    flex: 1,
+    position: 'relative',
+  },
+  map: {
+    flex: 1,
+  },
+  userLocationOuter: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(37, 99, 235, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userLocationInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#2563EB',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  marker: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  callout: {
+    width: 200,
+    padding: 8,
+  },
+  calloutMagnitude: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  calloutPlace: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 4,
+  },
+  calloutDetail: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  locateButton: {
+    position: 'absolute',
+    right: 16,
+    bottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  locateIcon: {
+    color: '#38BDF8',
+    fontSize: 16,
+  },
+  locateText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  footerText: {
+    color: '#94A3B8',
+    fontSize: 11,
+  },
 });

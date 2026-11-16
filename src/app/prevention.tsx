@@ -11,7 +11,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, TopBar } from "../components";
 import { API_BASE_URL } from "../config/api";
 import { COUNTRIES } from "../constants/countries";
@@ -25,6 +25,7 @@ import {
   type PreventionTip,
 } from "../services/publicContentService";
 export default function PreventionScreen() {
+
   const router = useRouter();
   const { user, getAccessToken, requireAuth } = useAuth();
   const country = user?.pais ?? "PERU";
@@ -33,6 +34,7 @@ export default function PreventionScreen() {
   const [contactsRetry, setContactsRetry] = useState(0);
   const [contactsError, setContactsError] = useState<string | null>(null);
   const [callError, setCallError] = useState<string | null>(null);
+
   useEffect(() => {
     const controller = new AbortController();
     setDirectory(null);
@@ -69,9 +71,11 @@ export default function PreventionScreen() {
       checked: boolean;
     }[]
   >([]);
+
   const [kitLoading, setKitLoading] = useState(true);
   const [kitError, setKitError] = useState<string | null>(null);
   const [kitRetry, setKitRetry] = useState(0);
+
   useEffect(() => {
     const ctrl = new AbortController();
     setKitLoading(true);
@@ -428,6 +432,8 @@ export default function PreventionScreen() {
     </SafeAreaView>
   );
 }
+
+// Estilos aplicados a este componente
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,

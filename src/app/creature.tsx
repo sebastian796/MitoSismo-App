@@ -10,7 +10,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {  SafeAreaView } from "react-native-safe-area-context";
 import {
   fetchPublicCreature,
   getCachedPublicCreature,
@@ -22,11 +22,13 @@ import { Colors, Radii, Spacing, Typography } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
 
 export default function CreatureScreen() {
+
   const router = useRouter();
   const { user } = useAuth();
   const [publicCreature, setPublicCreature] = useState<
     import("../types/auth").CreatureInfo | null
   >(getCachedPublicCreature);
+
   useEffect(() => {
     if (!user) {
       const controller = new AbortController();
@@ -40,7 +42,6 @@ export default function CreatureScreen() {
   const isGuest = user === null;
   const mascota = user?.dataMascota ?? null;
   const criatura = mascota?.criatura ?? null;
-
   const scale = useSharedValue(1);
 
   useEffect(() => {

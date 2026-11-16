@@ -21,13 +21,16 @@ import {
   Radii,
   magInfo,
 } from '../../constants/theme';
+
 export default function QuakeDetailScreen() {
+
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [reported, setReported] = useState(false);
   const [quake, setQuake] = useState<Quake | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     async function loadQuake() {
       try {
@@ -58,6 +61,7 @@ export default function QuakeDetailScreen() {
       'Tu estado "Estoy a salvo" ha sido registrado y compartido con tus contactos.',
     );
   };
+
   const handleShareReport = async () => {
     if (!quake || !info) return;
     try {
@@ -84,6 +88,7 @@ export default function QuakeDetailScreen() {
       </SafeAreaView>
     );
   }
+
   if (error || !quake || !info) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -106,6 +111,7 @@ export default function QuakeDetailScreen() {
       </SafeAreaView>
     );
   }
+  
   return (
     <SafeAreaView style={styles.safeArea}>
       <TopBar
